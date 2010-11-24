@@ -1,5 +1,5 @@
 #
-# vsmtpd/daemon.py
+# vsmtpd/error.py
 #
 # Copyright (C) 2010 @UK Plc, http://www.uk-plc.net
 #
@@ -23,26 +23,8 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-import os
-import grp
-import pwd
-import logging
+class VsmtpdException(Exception):
+    pass
 
-from twisted.internet import reactor
-
-from vsmtpd.smtpd import SMTPD
-
-log = logging.getLogger(__name__)
-
-class Daemon(object):
-
-    def __init__(self):
-        self.smtpd = SMTPD()
-    
-    def start(self):
-        self.smtpd.start()
-        reactor.run()
-
-def main():
-    daemon = Daemon()
-    daemon.start()
+class HookNotFound(VsmtpdException):
+    pass

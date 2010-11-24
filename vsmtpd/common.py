@@ -1,5 +1,5 @@
 #
-# vsmtpd/daemon.py
+# vsmtpd/common.py
 #
 # Copyright (C) 2010 @UK Plc, http://www.uk-plc.net
 #
@@ -23,26 +23,11 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-import os
-import grp
-import pwd
-import logging
-
-from twisted.internet import reactor
-
-from vsmtpd.smtpd import SMTPD
-
-log = logging.getLogger(__name__)
-
-class Daemon(object):
-
-    def __init__(self):
-        self.smtpd = SMTPD()
-    
-    def start(self):
-        self.smtpd.start()
-        reactor.run()
-
-def main():
-    daemon = Daemon()
-    daemon.start()
+OK                  = 900
+DENY                = 901 # 550
+DENYSOFT            = 902 # 450
+DENY_DISCONNECT     = 903 # 550 + disconnect
+DENYSOFT_DISCONNECT = 904 # 450 + disconnect
+DECLINED            = 909
+DONE                = 910
+YIELD               = 911
