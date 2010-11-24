@@ -1,5 +1,5 @@
 #
-# vsmtpd/daemon.py
+# vsmtpd/plugin.py
 #
 # Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
 #
@@ -20,26 +20,11 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-import os
-import grp
-import pwd
-import logging
+def hook(func):
+    func.is_hook = True
+    return func
 
-from twisted.internet import reactor
-
-from vsmtpd.smtpd import SMTPD
-
-log = logging.getLogger(__name__)
-
-class Daemon(object):
-
-    def __init__(self):
-        self.smtpd = SMTPD()
+class Plugin(object):
     
-    def start(self):
-        self.smtpd.start()
-        reactor.run()
-
-def main():
-    daemon = Daemon()
-    daemon.start()
+    def register(self, hook_name, callback):
+        pass
