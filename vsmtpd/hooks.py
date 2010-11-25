@@ -61,7 +61,7 @@ class HookManager(object):
     """
 
     def __init__(self):
-        self.__hooks = dict([('hook_' + h, []) for h in HOOKS])
+        self.__hooks = dict([(h, []) for h in HOOKS])
 
     def deregister_hook(self, hook_name, callback):
         """

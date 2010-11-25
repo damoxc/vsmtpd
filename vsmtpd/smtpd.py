@@ -23,17 +23,51 @@
 from twisted.internet import reactor
 from twisted.mail.smtp import ESMTP, SMTPFactory as _SMTPFactory
 
+from vsmtpd.common import *
 from vsmtpd.hooks import HookManager
+
+class Connection(object):
+
+    def __init__(self, transport):
+        self.transport = transport
+
+    @property
+    def hello(self):
+        return ''
+
+    @property
+    def hello_host(self):
+        return ''
+
+    @property
+    def local_ip(self):
+        return self.transport.getHost().host
+
+    @property
+    def local_port(self):
+        return self.transport.getHost().port
+
+    @property
+    def remote_ip(self):
+        return self.transport.getPeer().host
+
+    @property
+    def remote_port(self):
+        return self.transport.getPeer().port
+
+    @property
+    def relay_client(self):
+        return False
 
 class SMTP(ESMTP):
 
     def makeConnection(self, transport):
-        self.factory.hooks.dispatch_hook('pre_connection', transport)
+        self.connection = Connection(transport)
+        self.factory.hooks.dispatch_hook('pre_connection', self.connection)
         return ESMTP.makeConnection(self, transport)
     
     def connectionMade(self):
-        # run hook_connect
-        print dir(self)
+        self.factory.hooks.dispatch_hook('pre_connection', self.connection)
         return ESMTP.connectionMade(self)
 
     def connectionLost(self, reason):
@@ -42,7 +76,7 @@ class SMTP(ESMTP):
 
     def greeting(self):
         # run hook_greeting
-        self.factory.hooks.dispatch_hook('hook_greeting', self)
+        self.factory.hooks.dispatch_hook('greeting', self)
         return ESMTP.greeting(self)
 
     def do_HELO(self, rest):
