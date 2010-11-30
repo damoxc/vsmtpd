@@ -25,6 +25,7 @@ import grp
 import pwd
 import logging
 
+from optparse import OptionParser
 from twisted.internet import reactor
 
 from vsmtpd.smtpd import SMTPD
@@ -33,13 +34,22 @@ log = logging.getLogger(__name__)
 
 class Daemon(object):
 
-    def __init__(self):
+    def __init__(self, options, args):
         self.smtpd = SMTPD()
+        self.smtpd.interfaces = options.listen
+        self.smtpd.port = options.port
     
     def start(self):
         self.smtpd.start()
         reactor.run()
 
 def main():
-    daemon = Daemon()
+    parser = OptionParser()
+    parser.add_option('-l', '--listen', dest='listen',  action='append',
+        help='listen on this address')
+    parser.add_option('-p', '--port', dest='port', type='int', default=25,
+        help='set the default port to listen on')
+    (options, args) = parser.parse_args()
+
+    daemon = Daemon(options, args)
     daemon.start()

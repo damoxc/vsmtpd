@@ -133,6 +133,8 @@ class SMTPD(object):
     def __init__(self):
         self.factory = SMTPFactory()
         self.factory.hooks = HookManager()
+        self.interfaces = None
+        self.port = 25
 
     def start(self):
-        self.port = reactor.listenTCP(2500, self.factory)
+        self.port = reactor.listenTCP(self.port, self.factory)
