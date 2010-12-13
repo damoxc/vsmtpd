@@ -1,5 +1,5 @@
 #
-# vsmtpd/plugins/count_unrecognized_commands.py
+# vsmtpd/config.py
 #
 # Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
 #
@@ -20,9 +20,24 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.plugin import Plugin, hook
+import json
 
-class CountUnrecognizedCommands(Plugin):
+class Config(object):
     
-    def hook_unknown(self, rest):
-        pass
+    def __init__(self, path):
+        self.path = path
+
+    def load(self, path=None):
+        """
+        Load the configuration from the config file.
+
+        :keyword path: The optional path parameter
+        :type path: str
+        """
+
+        if path is None:
+            path = self.path
+
+def load(path):
+    config = Config(path)
+    return config
