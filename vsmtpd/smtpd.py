@@ -30,14 +30,24 @@ class Connection(object):
 
     def __init__(self, transport):
         self.transport = transport
+        self.__hello = None
+        self.__hello_host = None
 
     @property
     def hello(self):
-        return ''
+        return self.__hello
+
+    @hello.setter
+    def hello(self, value):
+        self.__hello = value
 
     @property
     def hello_host(self):
-        return ''
+        return self.__hello_host
+
+    @hello_host.setter
+    def hello_host(self, value):
+        self.__hello_host = value
 
     @property
     def local_ip(self):
@@ -59,56 +69,88 @@ class Connection(object):
     def relay_client(self):
         return False
 
+class Transaction(object):
+
+    @property
+    def sender(self):
+        return self.__sender
+
+    @sender.setter
+    def sender(self, value):
+        self.__sender = value
+
+    def __init__(self, connection):
+        self.connection = connection
+        self.__sender = None
+
 class SMTP(ESMTP):
 
     def makeConnection(self, transport):
         self.connection = Connection(transport)
-        self.factory.hooks.dispatch_hook('pre_connection', self.connection)
-        return ESMTP.makeConnection(self, transport)
+        self.transaction = None
+
+        message = ''
+        result = self.factory.hooks.dispatch('pre_connection', self.connection)
+
+        # Handle a tuple result
+        if isinstance(result, tuple):
+            (result, message) = result
+
+        # No plugin opted to take charge here, revert to default action
+        if not result or result == DECLINED:
+            return ESMTP.makeConnection(self, transport)
+
+        if result == DENY_DISCONNECT:
+            self.sendCode(550, message)
+            self.loseConnection()
     
     def connectionMade(self):
-        self.factory.hooks.dispatch_hook('pre_connection', self.connection)
+        self.factory.hooks.dispatch('pre_connection', self.connection)
         return ESMTP.connectionMade(self)
 
     def connectionLost(self, reason):
-        # run hook_post_connection
+        self.factory.hooks.dispatch('post_connection', self.connection)
         return ESMTP.connectionLost(self, reason)
 
     def greeting(self):
-        # run hook_greeting
-        self.factory.hooks.dispatch_hook('greeting', self)
+        self.factory.hooks.dispatch('greeting', self.connection)
         return ESMTP.greeting(self)
 
     def do_HELO(self, rest):
-        # run hook_helo
+        self.connection.hello = 'helo'
+        self.connection.hello_host = rest
+        self.factory.hooks.dispatch('helo', self.connection)
         return ESMTP.do_HELO(self, rest)
 
     def do_EHLO(self, rest):
-        # run hook_ehlo
+        self.connection.hello = 'ehlo'
+        self.connection.hello_host = rest
+        self.factory.hooks.dispatch('ehlo', self.connection)
         return ESMTP.do_EHLO(self, rest)
 
     def validateFrom(self, helo, origin):
-        # run hook_mail
+        self.transaction = Transaction(self.connection)
+        self.factory.hooks.dispatch('mail', self.transaction, origin)
         return ESMTP.validateFrom(self, helo, origin)
 
     def validateTo(self, user):
-        # run hook_rcpt
+        self.factory.hooks.dispatch('rcpt', self.transaction, user)
         return ESMTP.validateTo(self, user)
 
-    def do_UNKNOWN(self, rest):
-        # run hook_unrecognized_command
+    def do_UNKNOWN(self, command, rest):
+        self.factory.hooks.dispatch('unknown', self.transaction, command, rest)
         return ESMTP.do_UNKNOWN(self, rest)
 
     def do_DATA(self, rest):
-        # run hook_data
+        self.factory.hooks.dispatch('data', self.transaction)
         return ESMTP.do_DATA(self, rest)
 
     def do_RSET(self):
-        # run hook_rset
+        self.factory.hooks.dispatch('rset', self.connection, self.transaction)
         return ESMTP.do_RSET(self, rest)
     
     def do_QUIT(self, rest):
-        # run hook_quit
+        self.factory.hooks.dispatch('quit', self.connection)
         return ESMTP.do_QUIT(self, rest)
 
     def do_QUEUE(self):
@@ -116,6 +158,25 @@ class SMTP(ESMTP):
         # run hook_queue
         # run hook_post_queue
         pass
+
+    def state_COMMAND(self, line):
+        line = line.strip()
+
+        parts = line.split(None, 1)
+        if parts:
+            method = self.lookupMethod(parts[0]) or self.do_UNKNOWN
+            if method is self.do_UNKNOWN:
+                if len(parts) == 2:
+                    method(parts[0], parts[1])
+                else:
+                    method(parts[0], '')
+            else:
+                if len(parts) == 2:
+                    method(parts[1])
+                else:
+                    method('')
+        else:
+            self.sendSyntaxError()
 
 class SMTPFactory(_SMTPFactory):
 

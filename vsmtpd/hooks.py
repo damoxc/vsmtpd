@@ -63,7 +63,7 @@ class HookManager(object):
     def __init__(self):
         self.__hooks = dict([(h, []) for h in HOOKS])
 
-    def deregister_hook(self, hook_name, callback):
+    def deregister(self, hook_name, callback):
         """
         Deregister a hook from the hook manager.
 
@@ -76,7 +76,7 @@ class HookManager(object):
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].remove(callback)
 
-    def register_hook(self, hook_name, callback):
+    def register(self, hook_name, callback):
         """
         Register a hook listener with the hook manager.
         
@@ -89,7 +89,7 @@ class HookManager(object):
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].append(callback)
 
-    def dispatch_hook(self, hook_name, *args, **kwargs):
+    def dispatch(self, hook_name, *args, **kwargs):
         """
         Fires a hook.
 
