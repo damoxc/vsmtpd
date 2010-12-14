@@ -20,6 +20,13 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+# Stop Ubuntu spitting out pointless deprecation warnings we can do nothing
+# about.
+import warnings
+warnings.filterwarnings('ignore',
+    category = DeprecationWarning,
+    module   = 'twisted')
+
 import os
 import grp
 import pwd
