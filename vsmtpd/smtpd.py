@@ -74,6 +74,17 @@ class SMTP(ESMTP):
         self.dispatch('greeting', self.connection)
         return ESMTP.greeting(self)
 
+    def extensions(self):
+        """
+        Override the original extensions method, adding support for
+        outputting the max message size allowed.
+        """
+        ext = ESMTP.extensions(self)
+        if self.factory.max_size:
+            ext['SIZE'] = [str(self.factory.max_size)]
+        ext['8BITMIME'] = None
+        return ext
+
     def do_HELO(self, rest):
         self.connection.hello = 'helo'
         self.connection.hello_host = rest
@@ -164,6 +175,7 @@ class SMTPD(object):
     def __init__(self):
         self.factory = SMTPFactory()
         self.factory.hooks = HookManager()
+        self.factory.max_size = 26214400
         self.interfaces = None
         self.port = 25
 
