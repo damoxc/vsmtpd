@@ -24,8 +24,12 @@ import json
 
 class Config(object):
     
-    def __init__(self, path):
+    def __init__(self, path, defaults=None):
         self.path = path
+        if defaults:
+            self.__config = defaults
+        else:
+            self.__config = {}
 
     def load(self, path=None):
         """
@@ -37,6 +41,8 @@ class Config(object):
 
         if path is None:
             path = self.path
+
+        self.__config.update(json.load(open(path)))
 
 def load(path):
     config = Config(path)
