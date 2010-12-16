@@ -45,10 +45,36 @@ class Daemon(object):
         self.smtpd = SMTPD()
         self.smtpd.interfaces = options.listen
         self.smtpd.port = options.port
+        self.children = []
+        self.master = True
     
     def start(self):
+        """
+        Start the daemon and perform all actions to prepare vsmtpd for
+        accepting mail.
+        """
+
         self.smtpd.start()
+        #reactor.callLater(0, self.spawn_children)
         reactor.run()
+
+    def spawn_children(self):
+        """
+        Starts the children ready for processing
+        """
+
+        for i in xrange(1, 3):
+            child_pid = os.fork()
+            if child_pid == 0:
+                self.master = False
+                break
+            else:
+                self.children.append(child_pid)
+
+        if self.master:
+            print 'master pid: %s' % os.getpid()
+            for child in self.children:
+                print 'child pid: %s' % child
 
 def main():
     parser = OptionParser()
