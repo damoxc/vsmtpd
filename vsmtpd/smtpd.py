@@ -145,8 +145,8 @@ class SMTP(ESMTP):
         self.factory.hooks.dispatch('data', self.transaction)
         return ESMTP.do_DATA(self, rest)
 
-    def do_RSET(self):
-        self.factory.hooks.dispatch('rset', self.connection, self.transaction)
+    def do_RSET(self, rest):
+        self.factory.hooks.dispatch('reset_transaction', self.connection, self.transaction)
         return ESMTP.do_RSET(self, rest)
     
     def do_QUIT(self, rest):
