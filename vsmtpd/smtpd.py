@@ -85,12 +85,21 @@ class Transaction(object):
 
 class SMTP(ESMTP):
 
+    def dispatch(self, hook_name, *args):
+        """
+        Proxy method to dispatch hooks
+
+        :param hook_name: The name of the hook
+        :type hook_name: str
+        """
+        return self.factory.hooks.dispatch(hook_name, *args)
+
     def makeConnection(self, transport):
         self.connection = Connection(transport)
         self.transaction = None
 
         message = ''
-        result = self.factory.hooks.dispatch('pre_connection', self.connection)
+        result = self.dispatch('pre_connection', self.connection)
 
         # Handle a tuple result
         if isinstance(result, tuple):
@@ -105,52 +114,59 @@ class SMTP(ESMTP):
             self.loseConnection()
     
     def connectionMade(self):
-        self.factory.hooks.dispatch('pre_connection', self.connection)
+        self.dispatch('pre_connection', self.connection)
         return ESMTP.connectionMade(self)
 
     def connectionLost(self, reason):
-        self.factory.hooks.dispatch('post_connection', self.connection)
+        self.dispatch('post_connection', self.connection)
         return ESMTP.connectionLost(self, reason)
 
     def greeting(self):
-        self.factory.hooks.dispatch('greeting', self.connection)
+        self.dispatch('greeting', self.connection)
         return ESMTP.greeting(self)
 
     def do_HELO(self, rest):
         self.connection.hello = 'helo'
         self.connection.hello_host = rest
-        self.factory.hooks.dispatch('helo', self.connection)
+        self.dispatch('helo', self.connection)
         return ESMTP.do_HELO(self, rest)
 
     def do_EHLO(self, rest):
         self.connection.hello = 'ehlo'
         self.connection.hello_host = rest
-        self.factory.hooks.dispatch('ehlo', self.connection)
+        self.dispatch('ehlo', self.connection)
         return ESMTP.do_EHLO(self, rest)
 
     def validateFrom(self, helo, origin):
+        self.dispatch('reset_transaction', self.connection, self.transaction)
         self.transaction = Transaction(self.connection)
-        self.factory.hooks.dispatch('mail', self.transaction, origin)
+
+        result = self.dispatch('mail', self.transaction, origin)
+
+        # No plugin opted to take charge here, revert to default action
+        if not result or result == DECLINED:
+            return ESMTP.validateFrom(self, helo, origin)
+
         return ESMTP.validateFrom(self, helo, origin)
 
     def validateTo(self, user):
-        self.factory.hooks.dispatch('rcpt', self.transaction, user)
+        self.dispatch('rcpt', self.transaction, user)
         return ESMTP.validateTo(self, user)
 
     def do_UNKNOWN(self, command, rest):
-        self.factory.hooks.dispatch('unknown', self.transaction, command, rest)
+        self.dispatch('unknown', self.transaction, command, rest)
         return ESMTP.do_UNKNOWN(self, rest)
 
     def do_DATA(self, rest):
-        self.factory.hooks.dispatch('data', self.transaction)
+        self.dispatch('data', self.transaction)
         return ESMTP.do_DATA(self, rest)
 
     def do_RSET(self, rest):
-        self.factory.hooks.dispatch('reset_transaction', self.connection, self.transaction)
+        self.dispatch('reset_transaction', self.connection, self.transaction)
         return ESMTP.do_RSET(self, rest)
     
     def do_QUIT(self, rest):
-        self.factory.hooks.dispatch('quit', self.connection)
+        self.dispatch('quit', self.connection)
         return ESMTP.do_QUIT(self, rest)
 
     def do_QUEUE(self):
