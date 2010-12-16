@@ -28,3 +28,62 @@ DENYSOFT_DISCONNECT = 904 # 450 + disconnect
 DECLINED            = 909
 DONE                = 910
 YIELD               = 911
+
+class Connection(object):
+
+    def __init__(self, transport):
+        self.transport = transport
+        self.__hello = None
+        self.__hello_host = None
+
+    @property
+    def hello(self):
+        return self.__hello
+
+    @hello.setter
+    def hello(self, value):
+        self.__hello = value
+
+    @property
+    def hello_host(self):
+        return self.__hello_host
+
+    @hello_host.setter
+    def hello_host(self, value):
+        self.__hello_host = value
+
+    @property
+    def local_ip(self):
+        return self.transport.getHost().host
+
+    @property
+    def local_port(self):
+        return self.transport.getHost().port
+
+    @property
+    def remote_ip(self):
+        return self.transport.getPeer().host
+
+    @property
+    def remote_port(self):
+        return self.transport.getPeer().port
+
+    @property
+    def relay_client(self):
+        return False
+
+
+class Transaction(object):
+
+    @property
+    def sender(self):
+        return self.__sender
+
+    @sender.setter
+    def sender(self, value):
+        self.__sender = value
+
+    def __init__(self, connection):
+        self.connection = connection
+        self.__sender = None
+

@@ -26,84 +26,33 @@ from twisted.mail.smtp import ESMTP, SMTPFactory as _SMTPFactory
 from vsmtpd.common import *
 from vsmtpd.hooks import HookManager
 
-class Connection(object):
-
-    def __init__(self, transport):
-        self.transport = transport
-        self.__hello = None
-        self.__hello_host = None
-
-    @property
-    def hello(self):
-        return self.__hello
-
-    @hello.setter
-    def hello(self, value):
-        self.__hello = value
-
-    @property
-    def hello_host(self):
-        return self.__hello_host
-
-    @hello_host.setter
-    def hello_host(self, value):
-        self.__hello_host = value
-
-    @property
-    def local_ip(self):
-        return self.transport.getHost().host
-
-    @property
-    def local_port(self):
-        return self.transport.getHost().port
-
-    @property
-    def remote_ip(self):
-        return self.transport.getPeer().host
-
-    @property
-    def remote_port(self):
-        return self.transport.getPeer().port
-
-    @property
-    def relay_client(self):
-        return False
-
-class Transaction(object):
-
-    @property
-    def sender(self):
-        return self.__sender
-
-    @sender.setter
-    def sender(self, value):
-        self.__sender = value
-
-    def __init__(self, connection):
-        self.connection = connection
-        self.__sender = None
-
 class SMTP(ESMTP):
+    """
+    Handles the basic ESMTP communication, firing off the hooks to
+    allow plugins to extend any point of the smtp communication.
+    """
 
     def dispatch(self, hook_name, *args):
         """
-        Proxy method to dispatch hooks
+        Proxy method to dispatch hooks and convert the response
+        into a standard form.
 
         :param hook_name: The name of the hook
         :type hook_name: str
         """
-        return self.factory.hooks.dispatch(hook_name, *args)
+        result = self.factory.hooks.dispatch(hook_name, *args)
+
+        # Sanity check the result
+        if isinstance(result, tuple):
+            return result
+        else:
+            return (result, '')
 
     def makeConnection(self, transport):
         self.connection = Connection(transport)
         self.transaction = None
 
-        message = ''
-        result = self.dispatch('pre_connection', self.connection)
-
-        # Handle a tuple result
-        if isinstance(result, tuple):
-            (result, message) = result
+        (result, message) = self.dispatch('pre_connection', self.connection)
 
         # No plugin opted to take charge here, revert to default action
         if not result or result == DECLINED:
@@ -141,11 +90,12 @@ class SMTP(ESMTP):
         self.dispatch('reset_transaction', self.connection, self.transaction)
         self.transaction = Transaction(self.connection)
 
-        result = self.dispatch('mail', self.transaction, origin)
+        (result, message)  = self.dispatch('mail', self.transaction, origin)
 
         # No plugin opted to take charge here, revert to default action
-        if not result or result == DECLINED:
-            return ESMTP.validateFrom(self, helo, origin)
+        if not result:
+            self.transaction.sender = origin
+            return origin
 
         return ESMTP.validateFrom(self, helo, origin)
 
@@ -193,6 +143,10 @@ class SMTP(ESMTP):
                     method('')
         else:
             self.sendSyntaxError()
+
+    def _cbFromValidate(self, from_, code=250, msg='sender OK - how exciting to get mail from you!'):
+        self._from = from_
+        self.sendCode(code, '<%s>, %s' % (from_, msg))
 
 class SMTPFactory(_SMTPFactory):
 
