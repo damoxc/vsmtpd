@@ -32,7 +32,7 @@ YIELD               = 911
 class Connection(object):
 
     def __init__(self, transport):
-        self.transport = transport
+        self.__transport = transport
         self.__hello = None
         self.__hello_host = None
 
@@ -54,26 +54,33 @@ class Connection(object):
 
     @property
     def local_ip(self):
-        return self.transport.getHost().host
+        return self.__transport.getHost().host
 
     @property
     def local_port(self):
-        return self.transport.getHost().port
+        return self.__transport.getHost().port
 
     @property
     def remote_ip(self):
-        return self.transport.getPeer().host
+        return self.__transport.getPeer().host
 
     @property
     def remote_port(self):
-        return self.transport.getPeer().port
+        return self.__transport.getPeer().port
 
     @property
     def relay_client(self):
         return False
 
-
 class Transaction(object):
+
+    def __init__(self, connection):
+        self.__connection = connection
+        self.__sender = None
+
+    @property
+    def connection(self):
+        return self.__conection
 
     @property
     def sender(self):
@@ -82,8 +89,3 @@ class Transaction(object):
     @sender.setter
     def sender(self, value):
         self.__sender = value
-
-    def __init__(self, connection):
-        self.connection = connection
-        self.__sender = None
-
