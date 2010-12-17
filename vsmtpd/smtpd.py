@@ -32,6 +32,20 @@ class SMTP(ESMTP):
     allow plugins to extend any point of the smtp communication.
     """
 
+    def disconnect(self, code, message='Good bye!'):
+        """
+        Handles performing DENY(|SOFT)_DISCONNECT, sending the appropriate
+        response and disconnecting the client.
+
+        :param code: The response code to send.
+        :type code: int
+        :keyword message: What to output after disconnecting
+        :type message: str
+        """
+        self.dispatch('disconnect')
+        self.sendCode(code, message)
+        self.transport.loseConnection()
+
     def dispatch(self, hook_name, *args):
         """
         Proxy method to dispatch hooks and convert the response
@@ -63,7 +77,7 @@ class SMTP(ESMTP):
             self.loseConnection()
     
     def connectionMade(self):
-        self.dispatch('pre_connection', self.connection)
+        self.dispatch('connect', self.connection)
         return ESMTP.connectionMade(self)
 
     def connectionLost(self, reason):
@@ -86,12 +100,18 @@ class SMTP(ESMTP):
         return ext
 
     def do_HELO(self, rest):
+        """
+        Handle firing the helo hook. Setup the connection object
+        """
         self.connection.hello = 'helo'
         self.connection.hello_host = rest
         self.dispatch('helo', self.connection)
         return ESMTP.do_HELO(self, rest)
 
     def do_EHLO(self, rest):
+        """
+        Handle firing the ehlo hook. Setup the connection object
+        """
         self.connection.hello = 'ehlo'
         self.connection.hello_host = rest
         self.dispatch('ehlo', self.connection)
@@ -111,8 +131,11 @@ class SMTP(ESMTP):
         return ESMTP.validateFrom(self, helo, origin)
 
     def validateTo(self, user):
-        self.dispatch('rcpt', self.transaction, user)
-        return ESMTP.validateTo(self, user)
+        (result, message) = self.dispatch('rcpt', self.transaction, user)
+
+        # No plugin has taken charge here, perform default action.
+        if not result:
+            return ESMTP.validateTo(self, user)
 
     def do_UNKNOWN(self, command, rest):
         self.dispatch('unknown', self.transaction, command, rest)
@@ -123,7 +146,13 @@ class SMTP(ESMTP):
         return ESMTP.do_DATA(self, rest)
 
     def do_RSET(self, rest):
+        # We don't care what plugins think about this for now
         self.dispatch('reset_transaction', self.connection, self.transaction)
+
+        # Reset the transaction like we've been told
+        self.transaction = Transaction(self.connection)
+
+        # Let twisted handle the rest
         return ESMTP.do_RSET(self, rest)
     
     def do_QUIT(self, rest):
@@ -155,25 +184,41 @@ class SMTP(ESMTP):
         else:
             self.sendSyntaxError()
 
-    def _cbFromValidate(self, from_, code=250, msg='sender OK - how exciting to get mail from you!'):
+    def _cbFromValidate(self, from_, code=250,
+        msg='sender OK - how exciting to get mail from you!'):
+        """
+        Override _cbFromValidate so we can format the response to MAIL
+        how we want to.
+        """
         self._from = from_
         self.sendCode(code, '<%s>, %s' % (from_, msg))
 
 class SMTPFactory(_SMTPFactory):
 
-    def __init__(self, *args, **kwargs):
-        _SMTPFactory.__init__(self, *args, **kwargs)
-        self.protocol = SMTP
+    protocol = SMTP
 
     def buildProtocol(self, addr):
         p = _SMTPFactory.buildProtocol(self, addr)
         p.factory = self
         return p
 
+    @property
+    def config(self):
+        return self.smtpd.config
+
+    @property
+    def hooks(self):
+        return self.smtpd.hooks
+
+    @property
+    def plugins(self):
+        return self.smtpd.plugins
+
 class SMTPD(object):
 
     def __init__(self):
         self.factory = SMTPFactory()
+        self.factory.smtpd = self
         self.factory.hooks = HookManager()
         self.factory.max_size = 26214400
         self.interfaces = None
