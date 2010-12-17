@@ -29,7 +29,6 @@ HOOKS = [
     'post_connection',      # directly before the connection is finished or if 
                             # the client drops the connection.
     'greeting',             # allows plugins to modify the greeting
-    'logging',              # when a log message is written
     'config',               # when a config ``file`` is requested
     'helo',                 # after the client sends HELO
     'ehlo',                 # after the client sends EHLO
