@@ -25,3 +25,18 @@ class VsmtpdException(Exception):
 
 class HookNotFound(VsmtpdException):
     pass
+
+class HookError(Exception):
+    pass
+
+class DenyError(HookError):
+    pass
+
+class DenySoftError(HookError):
+    pass
+
+class DenyDisconnectError(DenyError):
+    pass
+
+class DenySoftDisconnectError(DenySoftError):
+    pass
