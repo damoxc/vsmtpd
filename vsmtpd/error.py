@@ -27,16 +27,26 @@ class HookNotFound(VsmtpdException):
     pass
 
 class HookError(Exception):
-    pass
+    """
+    The base class for all hook errors.
+    """
+    
+    disconnect = False
+
+class DisconnectError(HookError):
+    
+    disconnect = True
 
 class DenyError(HookError):
-    pass
+    
+    code = 551
 
 class DenySoftError(HookError):
+    
+    code = 451
+
+class DenyDisconnectError(DenyError, DisconnectError):
     pass
 
-class DenyDisconnectError(DenyError):
-    pass
-
-class DenySoftDisconnectError(DenySoftError):
+class DenySoftDisconnectError(DenySoftError, DisconnectError):
     pass
