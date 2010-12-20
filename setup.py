@@ -27,7 +27,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name         = 'vmsmtpd',
+    name         = 'vsmtpd',
     version      = '0.0.1',
     author       = 'Damien Churchill',
     author_email = 'damoxc@gmail.com',
