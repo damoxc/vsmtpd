@@ -20,8 +20,12 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.error import (HookNotFound, DenyError, DenySoftError,
+import logging
+
+from vsmtpd.error import (HookNotFound, HookError, DenyError, DenySoftError,
     DenyDisconnectError, DenySoftDisconnectError)
+
+log = logging.getLogger(__name__)
 
 class Hook(object):
     """
@@ -30,6 +34,8 @@ class Hook(object):
     :param name: The hook name
     :type name: str
     """
+
+    errors = []
 
     def __init__(self, name):
         self.__name = name
@@ -49,13 +55,24 @@ class Hook(object):
         Default action that does nothing.
         """
 
-    def handle(self, *args, **kwargs):
+    def error(self, smtp, error):
+        """
+        Handles any errors raised within the callback, allowing a hook
+        to change the behaviour for errors depending on what it is.
+        """
+
+    def handle(self, smtp, *args, **kwargs):
         """
         Default handler that loops over the callbacks calling them one at 
         a time.
         """
         for callback in self.__callbacks:
-            callback(*args, **kwargs)
+            try:
+                callback(*args, **kwargs)
+            except HookError as e:
+                return self.error(smtp, e)
+            except Exception as e:
+                log.exception(e)
 
     def remove_handler(self, callback):
         """
@@ -77,6 +94,10 @@ class PreConnection(Hook):
 
     def __init__(self):
         super(PreConnection, self).__init__('pre_connection')
+
+    def error(self, smtp, error):
+        pass
+
 
 class Connect(Hook):
 
@@ -233,13 +254,15 @@ class HookManager(object):
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].add_handler(callback)
 
-    def dispatch(self, hook_name, *args, **kwargs):
+    def dispatch(self, smtp, hook_name, *args, **kwargs):
         """
         Fires a hook.
 
+        :param smtp: The instance of the SMTP calling the hook
+        :type smtp: vsmtpd.smtpd.SMTP
         :param hook_name: The name of the hook to call
         :type hook_name: str
         """
         if hook_name not in self.__hooks:
             raise HookNotFound(hook_name)
-        self.__hooks[hook_name].handle(*args, **kwargs)
+        self.__hooks[hook_name].handle(smtp, *args, **kwargs)

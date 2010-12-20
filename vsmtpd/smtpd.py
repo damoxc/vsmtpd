@@ -64,7 +64,7 @@ class SMTP(ESMTP):
         :param hook_name: The name of the hook
         :type hook_name: str
         """
-        result = self.factory.hooks.dispatch(hook_name, *args)
+        result = self.factory.hooks.dispatch(self, hook_name, *args)
 
         # Sanity check the result
         if isinstance(result, tuple):
