@@ -32,7 +32,7 @@ class SMTP(ESMTP):
     allow plugins to extend any point of the smtp communication.
     """
 
-    def disconnect(self, code, message='Good bye!'):
+    def disconnect(self, code, message=''):
         """
         Handles performing DENY(|SOFT)_DISCONNECT, sending the appropriate
         response and disconnecting the client.
@@ -42,8 +42,18 @@ class SMTP(ESMTP):
         :keyword message: What to output after disconnecting
         :type message: str
         """
+
+        # Set a default message if there isn't one
+        if not message:
+            message = 'Good bye!'
+
+        # Call any plugins that hook into a disconnect
         self.dispatch('disconnect')
+
+        # Send the client the code and message
         self.sendCode(code, message)
+
+        # Disconnect the client
         self.transport.loseConnection()
 
     def dispatch(self, hook_name, *args):
@@ -73,12 +83,17 @@ class SMTP(ESMTP):
             return ESMTP.makeConnection(self, transport)
 
         if result == DENY_DISCONNECT:
-            self.sendCode(550, message)
-            self.loseConnection()
+            self.disconnect(550, message)
     
     def connectionMade(self):
-        self.dispatch('connect', self.connection)
-        return ESMTP.connectionMade(self)
+        (result, message) = self.dispatch('connect', self.connection)
+
+        # Default result
+        if not result or result == OK:
+            return ESMTP.connectionMade(self)
+
+        if result == DENY:
+            self.disconnect(550, message)
 
     def connectionLost(self, reason):
         self.dispatch('post_connection', self.connection)
