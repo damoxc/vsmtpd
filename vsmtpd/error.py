@@ -39,7 +39,7 @@ class DisconnectError(HookError):
 
 class DenyError(HookError):
     
-    code = 551
+    code = 550
 
 class DenySoftError(HookError):
     
