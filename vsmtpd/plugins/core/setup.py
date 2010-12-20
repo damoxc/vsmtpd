@@ -33,7 +33,7 @@ setup (
     long_description = '',
     packages     = find_packages(),
     namespace_packages = ['vsmtpd', 'vsmtpd.plugins'],
-    package_data = [],
+    package_data = {},
 
     entry_points = {
         'vsmtpd.plugins': [
