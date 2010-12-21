@@ -96,13 +96,23 @@ class PreConnection(Hook):
         super(PreConnection, self).__init__('pre_connection')
 
     def error(self, smtp, error):
-        pass
-
+        """
+        This handler disconnects the client.
+        """
+        if issubclass(error, (DenyError, DenySoftError)):
+            smtp.disconnect(error.code, error.message)
 
 class Connect(Hook):
 
     def __init__(self):
         super(Connect, self).__init__('connect')
+
+    def error(self, smtp, error):
+        """
+        This handler disconnects the client.
+        """
+        if issubclass(error, (DenyError, DenySoftError)):
+            smtp.disconnect(error.code, error.message)
 
 class PostConnection(Hook):
 
