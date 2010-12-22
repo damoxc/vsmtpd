@@ -1,5 +1,5 @@
 #
-# vsmtpd/plugins/core/count_unrecognized_commands.py
+# vsmtpd/plugins/plugin.py
 #
 # Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
 #
@@ -20,10 +20,12 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.hooks import hook
-from vsmtpd.plugins.plugin import Plugin
+class Plugin(object):
 
-class CountUnrecognizedCommands(Plugin):
-    
-    def unknown(self, rest):
-        pass
+    def get_config(self, name):
+        """
+        Gets a simple configuration file and returns it as a list.
+        
+        :param name: The name of the configuration file
+        :type name: str
+        """

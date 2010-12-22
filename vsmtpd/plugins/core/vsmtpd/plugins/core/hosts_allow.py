@@ -21,9 +21,13 @@
 #
 
 from vsmtpd.hooks import hook
+from vsmtpd.plugins.plugin import Plugin
 
-class HostsAllow(object):
+class HostsAllow(Plugin):
+    """
+    Decide if a host is allowed to send mail.
+    """
     
     @hook
     def pre_connection(self, connection):
-        pass
+        remote = connection.remote_ip
