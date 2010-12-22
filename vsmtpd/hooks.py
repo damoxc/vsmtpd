@@ -27,6 +27,13 @@ from vsmtpd.error import (HookNotFound, HookError, DenyError, DenySoftError,
 
 log = logging.getLogger(__name__)
 
+def hook(func):
+    """
+    Decorator to mark a method as a hook handler.
+    """
+    func._hook_name = func.func_name
+    return func
+
 class Hook(object):
     """
     Base class for a hook handler.
