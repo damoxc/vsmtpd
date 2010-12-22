@@ -9,6 +9,9 @@ pre_connection
 :called:
 	as soon as the connection is accepted.
 
+:arguments:
+	- connection
+
 :exceptions:
 	- DenyError / DenyDisconnectError: returns a 550 to the client and ends
 	  the connection
@@ -23,11 +26,17 @@ connect
 :called:
 	at the start of a connection, before the greeting is sent.
 
+:arguments:
+	- connection
+
 post_connection
 ---------------
 :called:
 	directly before the connectino is finished, or if the client drops the
 	connection.
+
+:arguments:
+	- connection
 
 greeting
 --------
