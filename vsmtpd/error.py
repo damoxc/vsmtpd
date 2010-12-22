@@ -20,13 +20,13 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-class VsmtpdError(Exception):
+class Error(Exception):
     pass
 
-class HookNotFound(VsmtpdError):
+class HookNotFoundError(Error):
     pass
 
-class PluginNotFoundError(VsmtpdError):
+class PluginNotFoundError(Error):
     pass
 
 class HookError(Exception):

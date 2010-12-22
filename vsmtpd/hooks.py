@@ -22,7 +22,7 @@
 
 import logging
 
-from vsmtpd.error import (HookNotFound, HookError, DenyError, DenySoftError,
+from vsmtpd.error import (HookNotFoundError, HookError, DenyError, DenySoftError,
     DenyDisconnectError, DenySoftDisconnectError)
 
 log = logging.getLogger(__name__)
@@ -255,7 +255,7 @@ class HookManager(object):
         """
 
         if hook_name not in self.__hooks:
-            raise HookNotFound(hook_name)
+            raise HookNotFoundError(hook_name)
         self.__hooks[hook_name].remove_handler(callback)
 
     def register(self, hook_name, callback):
@@ -268,7 +268,7 @@ class HookManager(object):
         :type callback: func
         """
         if hook_name not in self.__hooks:
-            raise HookNotFound(hook_name)
+            raise HookNotFoundError(hook_name)
         self.__hooks[hook_name].add_handler(callback)
 
     def dispatch(self, smtp, hook_name, *args, **kwargs):
@@ -281,7 +281,7 @@ class HookManager(object):
         :type hook_name: str
         """
         if hook_name not in self.__hooks:
-            raise HookNotFound(hook_name)
+            raise HookNotFoundError(hook_name)
         self.__hooks[hook_name].handle(smtp, *args, **kwargs)
 
     def scan_plugin(self, plugin):
