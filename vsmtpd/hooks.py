@@ -254,7 +254,7 @@ class HookManager(object):
         :type callback: func
         """
 
-        if hook not in self.__hooks:
+        if hook_name not in self.__hooks:
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].remove_handler(callback)
 
@@ -267,7 +267,7 @@ class HookManager(object):
         :param callback: The hook callback function
         :type callback: func
         """
-        if hook not in self.__hooks:
+        if hook_name not in self.__hooks:
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].add_handler(callback)
 
@@ -283,3 +283,20 @@ class HookManager(object):
         if hook_name not in self.__hooks:
             raise HookNotFound(hook_name)
         self.__hooks[hook_name].handle(smtp, *args, **kwargs)
+
+    def scan_plugin(self, plugin):
+        """
+        Scans a plugin for any hook handlers.
+
+        :param plugin: The plugin object
+        :type plugin: object
+        """
+
+        # Loop over the plugins attributes checking to see if they are
+        # hook handlers.
+        for attr in dir(plugin):
+            hook_name = getattr(getattr(plugin, attr), '_hook_name', None)
+            if not hook_name:
+                continue
+            # Register the hook handler
+            self.register(hook_name, getattr(plugin, attr))
