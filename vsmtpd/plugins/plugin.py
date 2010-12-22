@@ -20,7 +20,15 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+from vsmtpd.common import DECLINED, DONE, OK
+
 class Plugin(object):
+
+    def declined(self):
+        return DECLINED
+
+    def done(self, message=None):
+        return (DONE, message)
 
     def get_config(self, name):
         """
@@ -29,3 +37,6 @@ class Plugin(object):
         :param name: The name of the configuration file
         :type name: str
         """
+
+    def ok(self, message=None):
+        return (OK, message)
