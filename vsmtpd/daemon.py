@@ -53,6 +53,11 @@ class Daemon(object):
         Start the daemon and perform all actions to prepare vsmtpd for
         accepting mail.
         """
+        # Hack until proper logging configuration is added
+        logging.basicConfig(
+            level  = logging.INFO,
+            format = '%(asctime)s [%(levelname)s] %(message)s'
+        )
 
         self.smtpd.start()
         #reactor.callLater(0, self.spawn_children)
