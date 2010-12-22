@@ -37,7 +37,8 @@ setup (
 
     entry_points = {
         'vsmtpd.plugins': [
-            'Core = vsmtpd.plugins.core:Core'
+            'count_unrecognized_commands = vsmtpd.plugins.core.count_unrecognized_commands:CountUnrecognizedCommands',
+            'hosts_allow = vsmtpd.plugins.core.hosts_allow:HostsAllow'
         ]
     }
 )

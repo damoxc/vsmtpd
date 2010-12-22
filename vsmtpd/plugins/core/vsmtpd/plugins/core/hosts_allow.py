@@ -20,10 +20,9 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.common import *
-from vsmtpd.plugin import Plugin, hook
+from vsmtpd.hooks import hook
 
-class HostsAllow(Plugin):
+class HostsAllow(object):
     
     @hook
     def pre_connection(self, connection):

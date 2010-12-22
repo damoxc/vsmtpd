@@ -20,9 +20,9 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.plugin import Plugin, hook
+from vsmtpd.hooks import hook
 
-class CountUnrecognizedCommands(Plugin):
+class CountUnrecognizedCommands(object):
     
-    def hook_unknown(self, rest):
+    def unknown(self, rest):
         pass
