@@ -20,11 +20,19 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import os
+import sys
+import logging
+import pkg_resources
+
 from twisted.internet import reactor
 from twisted.mail.smtp import ESMTP, SMTPFactory as _SMTPFactory
 
 from vsmtpd.common import *
+from vsmtpd.error import PluginNotFoundError
 from vsmtpd.hooks import HookManager
+
+log = logging.getLogger(__name__)
 
 class SMTP(ESMTP):
     """
@@ -76,14 +84,12 @@ class SMTP(ESMTP):
         self.connection = Connection(transport)
         self.transaction = None
 
+        # Execute the hooks
         (result, message) = self.dispatch('pre_connection', self.connection)
 
         # No plugin opted to take charge here, revert to default action
         if not result or result == DECLINED:
             return ESMTP.makeConnection(self, transport)
-
-        if result == DENY_DISCONNECT:
-            self.disconnect(550, message)
     
     def connectionMade(self):
         (result, message) = self.dispatch('connect', self.connection)
@@ -91,9 +97,6 @@ class SMTP(ESMTP):
         # Default result
         if not result or result == OK:
             return ESMTP.connectionMade(self)
-
-        if result == DENY:
-            self.disconnect(550, message)
 
     def connectionLost(self, reason):
         self.dispatch('post_connection', self.connection)
@@ -238,6 +241,60 @@ class SMTPD(object):
         self.factory.max_size = 26214400
         self.interfaces = None
         self.port = 25
+        self.plugins = {}
+        self.enabled_plugins = {}
+        self.scan_plugins()
+
+    def enable_plugin(self, name, *args):
+        """
+        Enable a plugin providing the specified arguments.
+
+        :param name: The plugin name to enable
+        :type name: str
+        """
+
+        # First check to see if we have a plugin by that name
+        if name not in self.plugins:
+            raise PluginNotFoundError(name)
+
+        try:
+            # Get the plugin class
+            class_ = self.plugins[name].load()
+
+            # Try to instantiate the plugin
+            instance = class_(*args)
+
+            # Scan the plugin for hooks
+            self.factory.hooks.scan_plugin(instance)
+
+            # Store the plugin for later just incase
+            self.enabled_plugins[name] = instance
+        except Exception as e:
+            log.exception(e)
+            log.fatal("Unable to create plugin '%s' using %r", name,
+                args)
+            sys.exit(1)
+        else:
+            log.info("Plugin '%s' enabled", name)
+
+    def scan_plugins(self):
+        """
+        Scans the main plugins directory for any plugins available, storing
+        them so they can easily be enabled.
+        """
+        entry_point = 'vsmtpd.plugins'
+
+        plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
+        pkg_resources.working_set.add_entry(plugin_dir)
+        self.pkg_env = pkg_resources.Environment([plugin_dir])
+
+        self.plugins = {}
+        for pkg_name in self.pkg_env:
+            egg = self.pkg_env[pkg_name][0]
+            egg.activate()
+            for name in egg.get_entry_map(entry_point):
+                entry_info = egg.get_entry_info(entry_point, name)
+                self.plugins[entry_info.name] = entry_info
 
     def start(self):
         self.port = reactor.listenTCP(self.port, self.factory)
