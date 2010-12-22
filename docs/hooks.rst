@@ -6,30 +6,45 @@ even allowing Plugins to implement their own smtp commands.
 
 pre_connection
 --------------
-This is fired as soon as the connection is accepted
+- **called** as soon as the connection is accepted
 
 connect
 -------
-This is fired at the start of a connection, before the greeting is sent.
+- **called** at the start of a connection, before the greeting is sent.
 
 post_connection
 ---------------
-This is fired directly before the connection is finished, or if the client drops the connection.
+- **called** directly before the connection is finished, or if the client 
+  drops the connection.
 
 greeting
 --------
-This allows plugins to modify the greeting that is sent to the client
-
-logging
--------
-
-config
-------
+- **called** - This allows plugins to modify the greeting that is sent to 
+  the client
 
 helo
 ----
-after the client sends HELO
+- **called** after the client sends HELO
 
 ehlo
 ----
-after the client sends EHLO
+- **called** after the client sends EHLO
+
+reset_transaction
+-----------------
+- **called** when a transaction is reset
+
+mail
+----
+- **called** after the client sends the MAIL FROM: command. The argument is
+  parsed and then this hook is called.
+
+rcpt
+----
+- **called** after the client sends a RCPT TO: command. The argument is
+  parsed and then this hook is called.
+
+data
+----
+- **called** after the client sends the DATA command, before any of the
+  message data is sent.
