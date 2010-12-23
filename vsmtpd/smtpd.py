@@ -73,17 +73,10 @@ class SMTP(ESMTP):
         :param hook_name: The name of the hook
         :type hook_name: str
         """
-        return self.factory.hooks.dispatch(self, hook_name, *args
-            ).addCallback(self._cbResult)
-
-    def _cbResult(self, result):
-        # Sanity check the result
-        if isinstance(result, tuple):
-            return result
-        else:
-            return (result, '')
+        return self.factory.hooks.dispatch(self, hook_name, *args)
 
     def makeConnection(self, transport):
+        self.transport = transport
         self.connection = Connection(self)
         self.transaction = None
 
@@ -98,7 +91,7 @@ class SMTP(ESMTP):
             ESMTP.makeConnection(self, transport)
 
     def _ebPreConnection(self, error):
-        self.disconnect()
+        self.disconnect(451)
     
     def connectionMade(self):
         return self.dispatch('connect', self.connection
@@ -110,7 +103,7 @@ class SMTP(ESMTP):
             return ESMTP.connectionMade(self)
 
     def _ebConnect(self, error):
-        self.disconnect()
+        self.disconnect(451)
 
     def connectionLost(self, reason):
         self.dispatch('post_connection', self.connection)
