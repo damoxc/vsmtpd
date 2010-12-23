@@ -29,6 +29,7 @@ from twisted.internet import reactor
 from twisted.mail.smtp import ESMTP, SMTPFactory as _SMTPFactory
 
 from vsmtpd.common import *
+from vsmtpd.config import load_config
 from vsmtpd.error import PluginNotFoundError
 from vsmtpd.hooks import HookManager
 
@@ -253,12 +254,13 @@ class SMTPFactory(_SMTPFactory):
 class SMTPD(object):
 
     def __init__(self):
+        self.config = load_config('vsmtpd.cfg')
         self.factory = SMTPFactory()
         self.factory.smtpd = self
         self.factory.hooks = HookManager()
-        self.factory.max_size = 26214400
+        self.factory.max_size = self.config.getint('vsmtpd', 'max_size')
         self.interfaces = None
-        self.port = 25
+        self.port = self.config.getint('vsmtpd', 'port')
         self.plugins = {}
         self.enabled_plugins = {}
         self.scan_plugins()
@@ -315,4 +317,11 @@ class SMTPD(object):
                 self.plugins[entry_info.name] = entry_info
 
     def start(self):
+        """
+        Starts the server and enables all the plugins specified in the
+        configuration file.
+        """
+        for (plugin, empty) in self.config.items('plugins'):
+            self.enable_plugin(plugin)
+
         self.port = reactor.listenTCP(self.port, self.factory)
