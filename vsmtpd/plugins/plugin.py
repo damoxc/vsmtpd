@@ -21,6 +21,7 @@
 #
 
 from vsmtpd.common import DECLINED, DONE, OK
+from vsmtpd.config import load_config, load_simple_config
 
 class Plugin(object):
 
@@ -30,13 +31,24 @@ class Plugin(object):
     def done(self, message=None):
         return (DONE, message)
 
-    def get_config(self, name):
+    def config(self, name):
+        """
+        Loads a configuration file using SafeConfigParser and returns the
+        resulting Config object.
+
+        :param name: The name of the configuration file
+        :type name: str
+        """
+        return load_config(name)
+
+    def simple_config(self, name):
         """
         Gets a simple configuration file and returns it as a list.
         
         :param name: The name of the configuration file
         :type name: str
         """
+        return load_simple_config(name)
 
     def ok(self, message=None):
         return (OK, message)
