@@ -30,7 +30,7 @@ from twisted.mail.smtp import ESMTP, SMTPFactory as _SMTPFactory
 
 from vsmtpd.common import *
 from vsmtpd.config import load_config
-from vsmtpd.error import PluginNotFoundError
+from vsmtpd.error import DenyError, DenySoftError, PluginNotFoundError
 from vsmtpd.hooks import HookManager
 
 log = logging.getLogger(__name__)
@@ -91,7 +91,8 @@ class SMTP(ESMTP):
             ESMTP.makeConnection(self, transport)
 
     def _ebPreConnection(self, error):
-        self.disconnect(451)
+        if issubclass(error.type, (DenyError, DenySoftError)):
+            self.disconnect(error.value.code, error.value.message)
     
     def connectionMade(self):
         return self.dispatch('connect', self.connection
@@ -103,7 +104,8 @@ class SMTP(ESMTP):
             return ESMTP.connectionMade(self)
 
     def _ebConnect(self, error):
-        self.disconnect(451)
+        if issubclass(error.type, (DenyError, DenySoftError)):
+            self.disconnect(error.value.code, error.value.message)
 
     def connectionLost(self, reason):
         self.dispatch('post_connection', self.connection)

@@ -60,17 +60,6 @@ class Hook(object):
         """
         self.__callbacks.append(callback)
 
-    def default(self, *args, **kwargs):
-        """
-        Default action that does nothing.
-        """
-
-    def on_error(self, error, smtp):
-        """
-        Handles any errors raised within the callback, allowing a hook
-        to change the behaviour for errors depending on what it is.
-        """
-
     def handle(self, smtp, *args, **kwargs):
         """
         Default handler that loops over the callbacks calling them one at 
@@ -89,8 +78,7 @@ class Hook(object):
             return (None, '')
 
         return defer.maybeDeferred(self.__callbacks[n], *args, **kwargs
-            ).addCallback(self.on_result, smtp, n, args, kwargs
-            ).addErrback(self.on_error, smtp)
+            ).addCallback(self.on_result, smtp, n, args, kwargs)
 
     def on_result(self, result, smtp, n, args, kwargs):
         # Sanity check the result
@@ -127,24 +115,10 @@ class PreConnection(Hook):
     def __init__(self):
         super(PreConnection, self).__init__('pre_connection')
 
-    def on_error(self, error, smtp):
-        """
-        This handler disconnects the client.
-        """
-        if issubclass(error, (DenyError, DenySoftError)):
-            smtp.disconnect(error.code, error.message)
-
 class Connect(Hook):
 
     def __init__(self):
         super(Connect, self).__init__('connect')
-
-    def on_error(self, error, smtp):
-        """
-        This handler disconnects the client.
-        """
-        if issubclass(error, (DenyError, DenySoftError)):
-            smtp.disconnect(error.code, error.message)
 
 class PostConnection(Hook):
 
