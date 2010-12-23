@@ -20,30 +20,26 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-import json
+import os
+import ConfigParser
 
-class Config(object):
-    
-    def __init__(self, path, defaults=None):
-        self.path = path
-        if defaults:
-            self.__config = defaults
-        else:
-            self.__config = {}
+CONFIG_DIR = '/etc/vsmtpd'
 
-    def load(self, path=None):
-        """
-        Load the configuration from the config file.
-
-        :keyword path: The optional path parameter
-        :type path: str
-        """
-
-        if path is None:
-            path = self.path
-
-        self.__config.update(json.load(open(path)))
-
-def load(path):
-    config = Config(path)
+def load_config(name):
+    path = os.path.join(CONFIG_DIR, name)
+    config = ConfigParser.SafeConfigParser(allow_no_value=True)
+    config.read(path)
     return config
+
+def load_simple_config(name):
+    path = os.path.join(CONFIG_DIR, name)
+    if not os.path.exists(path):
+        return []
+
+    items = []
+    for line in open(path):
+        line = line.strip()
+        if line.startswith('#'):
+            continue
+        items.append(line)
+    return items
