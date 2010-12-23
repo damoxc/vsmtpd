@@ -22,8 +22,11 @@
 
 import logging
 
-from vsmtpd.error import (HookNotFoundError, HookError, DenyError, DenySoftError,
-    DenyDisconnectError, DenySoftDisconnectError)
+from twisted.internet import defer
+
+from vsmtpd.common import OK, DECLINED, DONE
+from vsmtpd.error import (HookNotFoundError, HookError, DenyError, 
+    DenySoftError, DenyDisconnectError, DenySoftDisconnectError)
 
 log = logging.getLogger(__name__)
 
@@ -62,24 +65,41 @@ class Hook(object):
         Default action that does nothing.
         """
 
-    def error(self, smtp, error):
+    def on_error(self, error, smtp):
         """
         Handles any errors raised within the callback, allowing a hook
         to change the behaviour for errors depending on what it is.
         """
+        print error, smtp
 
     def handle(self, smtp, *args, **kwargs):
         """
         Default handler that loops over the callbacks calling them one at 
         a time.
         """
-        for callback in self.__callbacks:
-            try:
-                callback(*args, **kwargs)
-            except HookError as e:
-                return self.error(smtp, e)
-            except Exception as e:
-                log.exception(e)
+        return defer.maybeDeferred(self._handle, smtp, 0, args, kwargs)
+
+    def _handle(self, smtp, n, args, kwargs):
+        """
+        Internal method that executes the callbacks one at a time, there
+        must be a better way to do this but it's the best way currently.
+        """
+
+        # Check to see if there are any callbacks left to call
+        if n >= len(self.__callbacks):
+            return None
+
+        return defer.maybeDeferred(self.__callbacks[n], *args, **kwargs
+            ).addCallback(self.on_result, smtp, n, args, kwargs
+            ).addErrback(self.on_error, smtp)
+
+    def on_result(self, (result, message), smtp, n, args, kwargs):
+        if result in (OK, DONE):
+            return (result, message)
+        elif n + 1 >= len(self.__callbacks):
+            return None
+        else:
+            return self._handle(smtp, n + 1, args, kwargs)
 
     def remove_handler(self, callback):
         """
@@ -282,7 +302,7 @@ class HookManager(object):
         """
         if hook_name not in self.__hooks:
             raise HookNotFoundError(hook_name)
-        self.__hooks[hook_name].handle(smtp, *args, **kwargs)
+        return self.__hooks[hook_name].handle(smtp, *args, **kwargs)
 
     def scan_plugin(self, plugin):
         """

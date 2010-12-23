@@ -27,7 +27,7 @@ from twisted.internet import utils
 from vsmtpd.hooks import hook
 from vsmtpd.plugins.plugin import Plugin
 
-FORTUNE = '/usr/games/fortune'
+FORTUNE = '/usr/bin/fortune'
 
 class QuitFortune(Plugin):
 
@@ -42,8 +42,9 @@ class QuitFortune(Plugin):
         if not os.path.exists(FORTUNE):
             return self.declined()
 
-        return utils.getProcessOutput(FORTUNE + ' -s'
-            ).addCallback(onResponse, connection)
+        return utils.getProcessOutput(FORTUNE, ('-s',)
+            ).addCallback(self.on_response, connection)
 
     def on_response(self, response, connection):
-        return self.ok(response)
+        connection.sendCode(221, response.strip())
+        return self.done()

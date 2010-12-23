@@ -31,8 +31,8 @@ YIELD               = 911
 
 class Connection(object):
 
-    def __init__(self, transport):
-        self.__transport = transport
+    def __init__(self, smtp):
+        self.__smtp = smtp
         self.__hello = None
         self.__hello_host = None
 
@@ -54,23 +54,26 @@ class Connection(object):
 
     @property
     def local_ip(self):
-        return self.__transport.getHost().host
+        return self.__smtp.transport.getHost().host
 
     @property
     def local_port(self):
-        return self.__transport.getHost().port
+        return self.__smtp.transport.getHost().port
 
     @property
     def remote_ip(self):
-        return self.__transport.getPeer().host
+        return self.__smtp.transport.getPeer().host
 
     @property
     def remote_port(self):
-        return self.__transport.getPeer().port
+        return self.__smtp.transport.getPeer().port
 
     @property
     def relay_client(self):
         return False
+
+    def sendCode(self, code, message=''):
+        return self.__smtp.sendCode(code, message)
 
 class Transaction(object):
 

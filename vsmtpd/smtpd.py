@@ -72,8 +72,10 @@ class SMTP(ESMTP):
         :param hook_name: The name of the hook
         :type hook_name: str
         """
-        result = self.factory.hooks.dispatch(self, hook_name, *args)
+        return self.factory.hooks.dispatch(self, hook_name, *args
+            ).addCallback(self._cbResult)
 
+    def _cbResult(self, result):
         # Sanity check the result
         if isinstance(result, tuple):
             return result
@@ -81,30 +83,37 @@ class SMTP(ESMTP):
             return (result, '')
 
     def makeConnection(self, transport):
-        self.connection = Connection(transport)
+        self.connection = Connection(self)
         self.transaction = None
 
         # Execute the hooks
-        (result, message) = self.dispatch('pre_connection', self.connection)
+        return self.dispatch('pre_connection', self.connection
+            ).addCallback(self._cbPreConnection, transport
+            ).addErrback(self._ebPreConnection)
 
+    def _cbPreConnection(self, (result, message), transport):
         # No plugin opted to take charge here, revert to default action
         if not result or result == DECLINED:
-            return ESMTP.makeConnection(self, transport)
+            ESMTP.makeConnection(self, transport)
+
+    def _ebPreConnection(self, error):
+        self.disconnect()
     
     def connectionMade(self):
-        (result, message) = self.dispatch('connect', self.connection)
+        return self.dispatch('connect', self.connection
+            ).addCallback(self._cbConnect
+            ).addErrback(self._ebConnect)
 
-        # Default result
-        if not result or result == OK:
+    def _cbConnect(self, (result, message)):
+        if not result or result in (DECLINED, OK):
             return ESMTP.connectionMade(self)
+
+    def _ebConnect(self, error):
+        self.disconnect()
 
     def connectionLost(self, reason):
         self.dispatch('post_connection', self.connection)
         return ESMTP.connectionLost(self, reason)
-
-    def greeting(self):
-        self.dispatch('greeting', self.connection)
-        return ESMTP.greeting(self)
 
     def extensions(self):
         """
@@ -123,7 +132,10 @@ class SMTP(ESMTP):
         """
         self.connection.hello = 'helo'
         self.connection.hello_host = rest
-        self.dispatch('helo', self.connection)
+        return self.dispatch('helo', self.connection
+            ).addCallback(self._cbHelo, rest)
+
+    def _cbHelo(self, (result, message), rest):
         return ESMTP.do_HELO(self, rest)
 
     def do_EHLO(self, rest):
@@ -174,8 +186,14 @@ class SMTP(ESMTP):
         return ESMTP.do_RSET(self, rest)
     
     def do_QUIT(self, rest):
-        self.dispatch('quit', self.connection)
-        return ESMTP.do_QUIT(self, rest)
+        return self.dispatch('quit', self.connection
+            ).addCallback(self._cbQuit, rest)
+
+    def _cbQuit(self, (result, message), rest):
+        if not result or result in (DECLINED, OK):
+            return ESMTP.do_QUIT(self, rest)
+        else:
+            self.transport.loseConnection()
 
     def do_QUEUE(self):
         # run hook_pre_queue
