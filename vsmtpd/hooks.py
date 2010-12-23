@@ -70,7 +70,6 @@ class Hook(object):
         Handles any errors raised within the callback, allowing a hook
         to change the behaviour for errors depending on what it is.
         """
-        print error, smtp
 
     def handle(self, smtp, *args, **kwargs):
         """
@@ -87,17 +86,23 @@ class Hook(object):
 
         # Check to see if there are any callbacks left to call
         if n >= len(self.__callbacks):
-            return None
+            return (None, '')
 
         return defer.maybeDeferred(self.__callbacks[n], *args, **kwargs
             ).addCallback(self.on_result, smtp, n, args, kwargs
             ).addErrback(self.on_error, smtp)
 
-    def on_result(self, (result, message), smtp, n, args, kwargs):
+    def on_result(self, result, smtp, n, args, kwargs):
+        # Sanity check the result
+        if isinstance(result, tuple):
+            (result, message) = result
+        else:
+            message = ''
+
         if result in (OK, DONE):
             return (result, message)
         elif n + 1 >= len(self.__callbacks):
-            return None
+            return (None, '')
         else:
             return self._handle(smtp, n + 1, args, kwargs)
 
@@ -122,7 +127,7 @@ class PreConnection(Hook):
     def __init__(self):
         super(PreConnection, self).__init__('pre_connection')
 
-    def error(self, smtp, error):
+    def on_error(self, error, smtp):
         """
         This handler disconnects the client.
         """
@@ -134,7 +139,7 @@ class Connect(Hook):
     def __init__(self):
         super(Connect, self).__init__('connect')
 
-    def error(self, smtp, error):
+    def on_error(self, error, smtp):
         """
         This handler disconnects the client.
         """
