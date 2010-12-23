@@ -31,10 +31,12 @@ import os
 import grp
 import pwd
 import logging
+import logging.config
 
 from optparse import OptionParser
 from twisted.internet import reactor
 
+from vsmtpd.config import CONFIG_DIR
 from vsmtpd.smtpd import SMTPD
 
 log = logging.getLogger(__name__)
@@ -53,33 +55,8 @@ class Daemon(object):
         Start the daemon and perform all actions to prepare vsmtpd for
         accepting mail.
         """
-        # Hack until proper logging configuration is added
-        logging.basicConfig(
-            level  = logging.INFO,
-            format = '%(asctime)s [%(levelname)s] %(message)s'
-        )
-
         self.smtpd.start()
-        #reactor.callLater(0, self.spawn_children)
         reactor.run()
-
-    def spawn_children(self):
-        """
-        Starts the children ready for processing
-        """
-
-        for i in xrange(1, 3):
-            child_pid = os.fork()
-            if child_pid == 0:
-                self.master = False
-                break
-            else:
-                self.children.append(child_pid)
-
-        if self.master:
-            print 'master pid: %s' % os.getpid()
-            for child in self.children:
-                print 'child pid: %s' % child
 
 def main():
     parser = OptionParser()
@@ -88,6 +65,10 @@ def main():
     parser.add_option('-p', '--port', dest='port', type='int', default=25,
         help='set the default port to listen on')
     (options, args) = parser.parse_args()
+
+    # Logging configuration
+    cfg_file = os.path.join(CONFIG_DIR, 'logging.cfg')
+    logging.config.fileConfig(cfg_file)
 
     daemon = Daemon(options, args)
     daemon.start()
