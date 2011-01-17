@@ -1,0 +1,30 @@
+; Main configuration
+;
+[vsmtpd]
+; The port to listen on
+port = 25
+
+; The interface to listen on
+;interface = 
+
+; The maximum amount of data to receive in bytes
+; max_size = 26214400 ; 25MB
+
+; Where temporary messages are kept when receiving/processing them
+spooldir = /var/spool/vsmtpd
+
+; The length of time of inactivity before a connection is dropped in seconds
+; timeout = 300
+
+[plugins]
+
+; hosts_allow -- checks hosts in the hosts_allow config file to see if
+; they are allowed to connect.
+hosts_allow
+
+; quit_fortune -- prints an entry from the fortune file (by running
+; /usr/games/fortune) in the response to a QUIT message in a connection
+; which began with a HELO (not EHLO). This does nothing whatsoever for spam,
+; but can help amuse fellow mail administrators and make SMTP logs more
+; bearable.
+quit_fortune
