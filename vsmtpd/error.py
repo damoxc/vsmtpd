@@ -1,7 +1,7 @@
 #
 # vsmtpd/error.py
 #
-# Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
+# Copyright (C) 2011 Damien Churchill <damoxc@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,33 +23,11 @@
 class Error(Exception):
     pass
 
+class TimeoutError(Error):
+    pass
+
 class HookNotFoundError(Error):
     pass
 
 class PluginNotFoundError(Error):
-    pass
-
-class HookError(Exception):
-    """
-    The base class for all hook errors.
-    """
-    
-    disconnect = False
-
-class DisconnectError(HookError):
-    
-    disconnect = True
-
-class DenyError(HookError):
-    
-    code = 550
-
-class DenySoftError(HookError):
-    
-    code = 451
-
-class DenyDisconnectError(DenyError, DisconnectError):
-    pass
-
-class DenySoftDisconnectError(DenySoftError, DisconnectError):
     pass

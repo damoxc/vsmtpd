@@ -1,7 +1,7 @@
 #
 # vsmtpd/daemon.py
 #
-# Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
+# Copyright (C) 2011 Damien Churchill <damoxc@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,43 +20,32 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-# Stop Ubuntu spitting out pointless deprecation warnings we can do nothing
-# about.
-import warnings
-warnings.filterwarnings('ignore',
-    category = DeprecationWarning,
-    module   = 'twisted')
-
-import os
-import grp
-import pwd
 import logging
-import logging.config
 
 from optparse import OptionParser
-from twisted.internet import reactor
-
-from vsmtpd.config import CONFIG_DIR
-from vsmtpd.smtpd import SMTPD
-
-log = logging.getLogger(__name__)
+from gevent.server import StreamServer
+from vsmtpd.connection import Connection
+from vsmtpd.hooks import HookManager
 
 class Daemon(object):
 
     def __init__(self, options, args):
-        self.smtpd = SMTPD()
-        self.smtpd.interfaces = options.listen
-        self.smtpd.port = options.port
-        self.children = []
-        self.master = True
-    
+        self.options = options
+        self.args = args
+        self.smtpd = StreamServer(('0.0.0.0', 2500), self.handle)
+        self.hook_manager = HookManager()
+
+    def fire(self, hook_name, *args, **kwargs):
+        return self.hook_manager.dispatch_hook(hook_name, *args, **kwargs)
+
+    def handle(self, socket, address):
+        connection = Connection(self, socket, address)
+        connection.fire('pre_connection', connection)
+        connection.accept()
+        connection.fire('disconnect', connection)
+
     def start(self):
-        """
-        Start the daemon and perform all actions to prepare vsmtpd for
-        accepting mail.
-        """
-        self.smtpd.start()
-        reactor.run()
+        self.smtpd.serve_forever()
 
 def main():
     parser = OptionParser()
@@ -66,9 +55,13 @@ def main():
         help='set the default port to listen on')
     (options, args) = parser.parse_args()
 
-    # Logging configuration
-    cfg_file = os.path.join(CONFIG_DIR, 'logging.cfg')
-    logging.config.fileConfig(cfg_file)
+    logging.basicConfig(level=logging.INFO)
 
     daemon = Daemon(options, args)
-    daemon.start()
+    try:
+        daemon.start()
+    except KeyboardInterrupt:
+        #from guppy import hpy
+        #h = hpy()
+        #print h.heap()
+        pass
