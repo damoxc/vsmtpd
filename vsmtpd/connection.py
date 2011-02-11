@@ -144,7 +144,7 @@ class Connection(object):
                     log.info('Client disconnected')
                     break
 
-                self.modefunc(line)
+                self._modefunc(line)
             except socket.error as e:
                 log.info('Client disconnected')
                 break
@@ -217,9 +217,10 @@ class Connection(object):
         """
         Disconnects the socket in a timely fashion.
         """
-        if not self.connected:
+        # Nothing to do if we're already disconnected
+        if not self._connected:
             return
-        self.connected = False
+
         try:
             self._socket.shutdown(socket.SHUT_RDWR)
             self._socket.close()
@@ -228,6 +229,9 @@ class Connection(object):
                 pass
             else:
                 raise
+        # Only set connected to False if the socket has been shutdown
+        # correctly.
+        self._connected = False
 
     def greeting(self):
         return '%s ESMTP' % self.local_host
