@@ -25,10 +25,12 @@ import logging
 from gevent import Greenlet, Timeout, socket
 
 from vsmtpd.error import TimeoutError
+from vsmtpd.commands import Command
 
 log = logging.getLogger(__name__)
 
 COMMAND, DATA, AUTH = 'COMMAND', 'DATA', 'AUTH'
+
 
 class Transaction(object):
 
@@ -79,6 +81,8 @@ class Transaction(object):
         pass
 
 class Connection(object):
+
+    commands = dict([(c.__name__.lower(), c) for c in Command.getall()])
 
     @property
     def local_ip(self):
@@ -131,6 +135,7 @@ class Connection(object):
         self._mode = COMMAND
         self._modefunc = self.state_COMMAND
         self._connected = True
+        self._transaction = None
 
     def accept(self):
         log.info('Accepted connection from %s', self.remote_host)
@@ -172,7 +177,12 @@ class Connection(object):
         if not parts:
             return self.send_syntax_error()
 
-        method = self.lookup_method(parts[0])
+        command = self.commands.get(parts[0].lower())
+        if not command:
+            return self.fire('unknown', self._transaction, *parts)
+
+        return command.parse(self, parts[1])
+
         if method:
             if len(parts) == 2:
                 method(parts[1])
@@ -191,13 +201,29 @@ class Connection(object):
         pass
 
     def do_UNKNOWN(self, method, rest):
+        self.fire('unknown', self._transaction, method, rest)
+
+    def respond_UNKNOWN(self, transaction, method, rest):
         self.send_code(500, 'Command not implemented')
 
     def do_HELO(self, rest):
-        self._hello = 'hello'
+        if self._hello:
+            return self.send_code(503, 'But you already said HELO...')
+
+        self._hello = 'helo'
         self._hello_host = rest
-        self._transaction = Transaction(self)
-        self.fire('helo', self)
+        self.fire('helo', self._transaction, rest)
+
+    def do_EHLO(self, rest):
+        if self._hello:
+            return self.send_code(503, 'But you already said HELO...')
+
+        self._hello = 'ehlo'
+        self._hello_host = rest
+        self.fire('ehlo', self._transaction, rest)
+
+    def respond_EHLO(self, transaction, rest):
+        pass
 
     def disconnect(self, code, message=''):
         """
