@@ -31,3 +31,32 @@ class HookNotFoundError(Error):
 
 class PluginNotFoundError(Error):
     pass
+
+class HookError(Error):
+    soft = False
+    disconnect = False
+    
+    @property
+    def message(self):
+        if self.args:
+            return self.args[0]
+        else:
+            return ''
+
+class StopHooks(HookError):
+    pass
+
+class DenyError(HookError):
+    pass
+
+class DenySoftError(HookError):
+    soft = True
+
+class DisconnectError(HookError):
+    disconnect = True
+
+class DenyDisconnectError(DenyError, DisconnectError):
+    pass
+
+class DenySoftDisconnectError(DenySoftError, DisconnectError):
+    pass
