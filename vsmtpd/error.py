@@ -32,6 +32,9 @@ class HookNotFoundError(Error):
 class PluginNotFoundError(Error):
     pass
 
+class CommandParseError(Error):
+    pass
+
 class HookError(Error):
     soft = False
     disconnect = False

@@ -20,91 +20,47 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-class Command(object):
-    
-    @classmethod
-    def parse(cls, connection, line):
-        raise NotImplementedError
+import re
+import logging
 
-    @classmethod
-    def respond(cls, *args, **kwargs):
-        raise NotImplementedError
+from vsmtpd.error import DenyError
 
-    @staticmethod
-    def getall():
-        return Command.__subclasses__()
+log = logging.getLogger(__name__)
 
-class Helo(Command):
+# Character classes for parsing addresses
+atom = r"[-A-Za-z0-9!\#$%&'*+/=?^_`{|}~]"
+# A string of quoted strings, backslash-escaped character or
+# atom characters + '@.,:'
+qstring = r'("[^"]*"|\\.|' + atom + r'|[@.,:])+'
 
-    @classmethod
-    def parse(cls, connection, line):
-        (code, message) = connection.fire('helo_parse')
-        print code, message
+mail_re = re.compile(r'''\s*FROM:\s*(?P<path><> # Empty <>
+                     |<''' + qstring + r'''> # <addr>
+                     |''' + qstring + r''' # addr
+                     )\s*(\s(?P<opts>.*))? # Optional WS + ESMTP options
+                     $''', re.I | re.X)
+rcpt_re = re.compile(r'\s*TO:\s*(?P<path><' + qstring + r'''> # <addr>
+                     |''' + qstring + r''' # addr
+                     )\s*(\s(?P<opts>.*))? # Optional WS + ESMTP options
+                     $''', re.I | re.X)
 
-    @classmethod
-    def response(cls, transaction, host):
-        pass
 
-class Ehlo(Command):
-    
-    @classmethod
-    def parse(cls, connection, line):
-        pass
+def parse(command, line):
+    if not line:
+        return None
 
-    @classmethod
-    def response(cls, transaction, host):
-        pass
+    if command in parsers:
+        return parsers[command](command, line)
 
-class Mail(Command):
+def parse_rcpt(command, line):
+    pass
 
-    @classmethod
-    def parse(cls, connection, line):
-        pass
+def parse_mail(command, line):
+    m = mail_re.match(line)
+    if not m:
+        raise DenyError('Syntax error in command')
+    return (m.group('path'), m.group('opts'))
 
-class Rcpt(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Auth(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Data(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Rset(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Help(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Vrfy(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Noop(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
-
-class Quit(Command):
-
-    @classmethod
-    def parse(cls, connection, line):
-        pass
+parsers = {
+    'rcpt': parse_rcpt,
+    'mail': parse_mail
+}

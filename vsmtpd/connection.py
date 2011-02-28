@@ -20,17 +20,18 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import time
+import hashlib
 import logging
 
 from gevent import Greenlet, Timeout, socket
-
-from vsmtpd.error import TimeoutError
-from vsmtpd.commands import Command
+from vsmtpd import error, commands
 
 log = logging.getLogger(__name__)
 
-COMMAND, DATA, AUTH = 'COMMAND', 'DATA', 'AUTH'
-
+def command(func):
+    func._is_command = True
+    return func
 
 class Transaction(object):
 
@@ -82,8 +83,6 @@ class Transaction(object):
 
 class Connection(object):
 
-    commands = dict([(c.__name__.lower(), c) for c in Command.getall()])
-
     @property
     def local_ip(self):
         return self._lip
@@ -106,7 +105,7 @@ class Connection(object):
 
     @property
     def remote_port(self):
-        return self._rort
+        return self._rport
 
     @property
     def hello(self):
@@ -120,22 +119,36 @@ class Connection(object):
     def relay_client(self):
         return self._relay_client
 
+    @property
+    def config(self):
+        return self._config
+
+    @property
+    def transaction(self):
+        return self._transaction
+
     def __init__(self, server, sock, address):
         (self._rip, self._rport) = address
         (self._lip, self._lport) = sock.getsockname()
         self._server = server
+        self._config = server.config
         self._socket = sock
         self._file   = sock.makefile()
         self._rhost  = socket.getfqdn(self._rip)
         self._lhost  = socket.getfqdn(self._lip)
-        self._timeout = Timeout(30, TimeoutError)
+        self._timeout = Timeout(30, error.TimeoutError)
         self._hello = None
         self._hello_host = ''
         self._relay_client = False
-        self._mode = COMMAND
-        self._modefunc = self.state_COMMAND
         self._connected = True
         self._transaction = None
+        self._commands = dict([(c, getattr(self, c)) for c in dir(self)
+            if getattr(getattr(self, c), '_is_command', False)])
+
+        # Generate a unique identifier for this connection
+        sha_hash = hashlib.sha1(self._rip)
+        sha_hash.update(str(time.time()))
+        self._cid    = sha_hash.hexdigest()
 
     def accept(self):
         log.info('Accepted connection from %s', self.remote_host)
@@ -149,12 +162,25 @@ class Connection(object):
                     log.info('Client disconnected')
                     break
 
-                self._modefunc(line)
+                line = line.strip()
+                parts = line.split(None, 1)
+
+                if not parts:
+                    self.send_syntax_error()
+                    continue
+
+                command = self._commands.get(parts[0].lower())
+                if not command:
+                    self.run_hooks('unknown', self._transaction, *parts)
+                    continue
+
+                command(parts[1] if parts[1:] else '')
+
             except socket.error as e:
                 log.info('Client disconnected')
                 break
 
-            except TimeoutError:
+            except error.TimeoutError:
                 self.timeout()
                 break
 
@@ -170,60 +196,158 @@ class Connection(object):
 
         self._disconnect()
 
-    def state_COMMAND(self, line):
-        line = line.strip()
-        parts = line.split(None, 1)
+    @command
+    def helo(self, line):
+        msg = self.run_hooks('helo_parse', line)
 
-        if not parts:
-            return self.send_syntax_error()
+        if self.hello:
+            return self.send_code(503, 'But you already said HELO...')
 
-        command = self.commands.get(parts[0].lower())
-        if not command:
-            return self.fire('unknown', self._transaction, *parts)
+        try:
+            self.run_hooks('helo', line)
 
-        return command.parse(self, parts[1])
+        except error.StopHooks:
+            return
 
-        if method:
-            if len(parts) == 2:
-                method(parts[1])
+        except error.HookError as e:
+            self.send_code(450 if e.soft else 550, e.message)
+            if e.disconnect:
+                self._disconnect()
+            return
+
+        self._hello = 'helo'
+        self._hello_host = line
+        self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.' %
+            (self.config.get('me'), self.remote_host, self.remote_ip))
+
+    @command
+    def ehlo(self, line):
+        msg = self.run_hooks('ehlo_parse', line)
+
+        if self.hello:
+            return self.send_code(503, 'But you already said HELO...')
+
+        try:
+            self.run_hooks('ehlo', line)
+
+        except error.StopHooks:
+            return
+
+        except error.HookError as e:
+            self.send_code(450 if e.soft else 550, e.message)
+            if e.disconnect:
+                self._disconnect()
+            return
+
+        self._hello = 'helo'
+        self._hello_host = line
+
+        args = []
+        if 'sizelimit' in self._config:
+            args.append('SIZE %s' % self._config.get('sizelimit'))
+
+        self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.\n' %
+            (self._config.get('me'), self.remote_host, self.remote_ip)
+            + '\n'.join(args))
+
+    @command
+    def mail(self, line):
+        if not self.hello:
+            return self.send_code(503, "Manners? You haven't said hello...")
+        
+        self.reset_transaction()
+        log.info('full from_parameter: %s', line)
+
+        # Disable until more operational, parsing hooks will be the last
+        # hooks implemented.
+        #
+        #try:
+        #    (from_addr, params) = self.run_hooks('mail_parse', line)
+        #except error.HookError as e:
+        #    self.send_syntax_error()
+        #except Exception as e:
+        #    pass
+        #else:
+        #    pass
+        try:
+            (addr, _params) = commands.parse('mail', line)
+        except error.HookError as e:
+            self.send_code(501, e.message or 'Syntax error in command')
+            return
+
+        params = {}
+        for param in _params:
+            try:
+                (key, value) = param.split('=')
+            except:
+                pass
             else:
-                method('')
-        else:
-            if len(parts) == 2:
-                self.do_UNKNOWN(method, parts[1])
-            else:
-                self.do_UNKNOWN(method, '')
+                params[key.lower()] = value
 
-    def state_DATA(self, line):
+        tnx = self.transaction
+        try:
+            msg = self.run_hooks('mail_pre', tnx, addr, params)
+        except error.HookError as e:
+            pass
+
+        # Turn addr into an Address object now
         pass
 
-    def state_AUTH(self, line):
-        pass
+        try:
+            msg = self.run_hooks('mail', tnx, addr, params)
+        except error.HookError as e:
+            self.send_code(450 if e.soft else 550, e.message)
+            if e.disconnect:
+                self._disconnect()
+            return
+
+        return self.send_code(503, "Manners? You haven't said hello...")
+
+    @command
+    def rcpt(self, line):
+        msg = self.run_hooks('rcpt_parse', line)
+        tnx = self.transaction
+
+        msg = self.run_hooks('rcpt_pre', tnx, addr)
+
+        msg = self.run_hooks('rcpt', tnx, addr)
+
+    @command
+    def vrfy(self, line):
+        self.run_hooks('vrfy')
+
+    @command
+    def rset(self, line):
+        self.send_code(250, 'OK')
+
+    @command
+    def quit(self, line):
+        msg = ''
+        
+        try:
+            msg = self.run_hooks('quit')
+
+        except error.HookError as e:
+            if isinstance(e, error.StopHooks):
+                self._disconnect()
+                return
+
+            if e.message:
+                msg = e.message
+            else:
+                msg = ''
+
+        if not msg:
+            msg = ('%s closing connection. Have a wonderful day.' % 
+                self._config.get('me'))
+
+        self.disconnect(221, msg)
 
     def do_UNKNOWN(self, method, rest):
-        self.fire('unknown', self._transaction, method, rest)
+        self.fire('unknown', self.transaction, method, rest)
 
     def respond_UNKNOWN(self, transaction, method, rest):
         self.send_code(500, 'Command not implemented')
-
-    def do_HELO(self, rest):
-        if self._hello:
-            return self.send_code(503, 'But you already said HELO...')
-
-        self._hello = 'helo'
-        self._hello_host = rest
-        self.fire('helo', self._transaction, rest)
-
-    def do_EHLO(self, rest):
-        if self._hello:
-            return self.send_code(503, 'But you already said HELO...')
-
-        self._hello = 'ehlo'
-        self._hello_host = rest
-        self.fire('ehlo', self._transaction, rest)
-
-    def respond_EHLO(self, transaction, rest):
-        pass
 
     def disconnect(self, code, message=''):
         """
@@ -262,11 +386,14 @@ class Connection(object):
     def greeting(self):
         return '%s ESMTP' % self.local_host
 
-    def fire(self, hook_name, *args, **kwargs):
-        return self._server.fire(hook_name, *args, **kwargs)
+    def reset_transaction(self):
+        if self._transaction:
+            self.run_hooks('reset_transaction')
+        self._transaction = Transaction(self)
 
-    def lookup_method(self, command):
-        return getattr(self, 'do_' + command.upper(), None)
+    def run_hooks(self, hook_name, *args, **kwargs):
+        return None
+        return self._server.fire(hook_name, *args, **kwargs)
 
     def send_code(self, code, message=''):
         lines = message.splitlines()

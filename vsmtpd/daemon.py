@@ -32,6 +32,10 @@ class Daemon(object):
     def __init__(self, options, args):
         self.options = options
         self.args = args
+        self.config = {
+            'me': 'smtp.uk-plc.net',
+            'sizelimit': 252342362
+        }
         self.smtpd = StreamServer(('0.0.0.0', 2500), self.handle)
         self.hook_manager = HookManager()
 
@@ -40,9 +44,9 @@ class Daemon(object):
 
     def handle(self, socket, address):
         connection = Connection(self, socket, address)
-        connection.fire('pre_connection', connection)
+        connection.run_hooks('pre_connection', connection)
         connection.accept()
-        connection.fire('disconnect', connection)
+        connection.run_hooks('disconnect', connection)
 
     def start(self):
         self.smtpd.serve_forever()
@@ -55,7 +59,11 @@ def main():
         help='set the default port to listen on')
     (options, args) = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+        datefmt = '%a %d %b %Y %H:%M:%S'
+    )
 
     daemon = Daemon(options, args)
     try:
