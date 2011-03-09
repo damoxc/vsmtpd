@@ -25,17 +25,37 @@ from vsmtpd.error import AddressParseError
 
 class Address(object):
 
-    def __init__(self, address, name=None):
-        self.address         = address
-        self.name            = name
-        self.user, self.host = address.split('@')
+    @property
+    def canonify(self):
+        return (self.user, self.host)
+
+    @property
+    def notes(self):
+        return self._notes
+
+    def __init__(self, user, host=None, name=None):
+        name, address = parseaddr(user)
+
+        if '@' in address:
+            self.name            = name
+            self.user, self.host = address.split('@')
+        else:
+            self.user = user
+            self.host = host
+            self.name = name
+
+        self._notes = {}
+    
+    def format(self):
+        return str(self)
 
     def __str__(self):
-        return formataddr((self.name, self.address))
+        return formataddr((self.name, '%s@%s' % self.canonify))
 
     @staticmethod
     def parse(address):
-        name, addr = parseaddr(address)
+        return Address(address)
+
         if '@' not in addr:
             raise AddressParseError("Unable to parse: '%s'" % address)
         return Address(addr, name)
