@@ -41,10 +41,7 @@ class HookError(Error):
     
     @property
     def message(self):
-        if self.args:
-            return self.args[0]
-        else:
-            return ''
+        return self.args[0] if self.args else ''
 
 class StopHooks(HookError):
     pass
