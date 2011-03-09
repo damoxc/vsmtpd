@@ -25,7 +25,9 @@ import hashlib
 import logging
 
 from gevent import Greenlet, Timeout, socket
-from vsmtpd import error, commands
+from vsmtpd import error, commands, hooks
+
+from vsmtpd.address import Address
 
 log = logging.getLogger(__name__)
 
@@ -239,7 +241,7 @@ class Connection(object):
                 self._disconnect()
             return
 
-        self._hello = 'helo'
+        self._hello = 'ehlo'
         self._hello_host = line
 
         args = []
@@ -252,6 +254,13 @@ class Connection(object):
 
     @command
     def mail(self, line):
+        """
+        This method handles the MAIL command in the SMTP transaction.
+
+        :param line: The rest of the command line
+        :type line: str
+        """
+
         if not self.hello:
             return self.send_code(503, "Manners? You haven't said hello...")
         
@@ -286,12 +295,12 @@ class Connection(object):
 
         tnx = self.transaction
         try:
-            msg = self.run_hooks('mail_pre', tnx, addr, params)
+            addr = self.run_hooks('mail_pre', tnx, addr, params) or addr
         except error.HookError as e:
             pass
 
         # Turn addr into an Address object now
-        pass
+        addr = Address(addr)
 
         try:
             msg = self.run_hooks('mail', tnx, addr, params)
@@ -301,7 +310,10 @@ class Connection(object):
                 self._disconnect()
             return
 
-        return self.send_code(503, "Manners? You haven't said hello...")
+        log.info('getting from from %s', addr)
+        self.send_code(250,
+            '%s sender OK - how exciting to get mail from you!', addr)
+        tnx.sender = addr
 
     @command
     def rcpt(self, line):
@@ -395,7 +407,9 @@ class Connection(object):
         return None
         return self._server.fire(hook_name, *args, **kwargs)
 
-    def send_code(self, code, message=''):
+    def send_code(self, code, message='', *args):
+        if message:
+            message = message % args
         lines = message.splitlines()
         lastline = lines[-1:]
         for line in lines[:-1]:
