@@ -20,15 +20,16 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+from types import FunctionType
 from vsmtpd.error import HookNotFoundError
 
 HOOKS = [ 
 # SMTP hooks
     'pre_connection',       # after the connection is accepted
-    'connect',              # at the start of a connection before the greeting is
-                            # sent
-    'post_connection',      # directly before the connection is finished or if 
-                            # the client drops the connection.
+    'connect',              # at the start of a connection before the
+                            # greeting is sent
+    'post_connection',      # directly before the connection is finished or
+                            # if the client drops the connection.
     'greeting',             # allows plugins to modify the greeting
     'logging',              # when a log message is written
     'config',               # when a config ``file`` is requested
@@ -44,8 +45,8 @@ HOOKS = [
     'queue',                # used to queue the message
     'queue_post',           # after the message has been queued
     'quit',                 # after the client sent a QUIT command
-    'disconnect',           # after a plugin returned DENY(|SOFT)_DISCONNECT, 
-                            # after the client sent the QUIT command
+    'disconnect',           # after a plugin returned DENY(|SOFT)_DISCONNECT
+                            # or after the client sent the QUIT command
     'unrecognized_command', # if the client sends an unkonwn command
     'vrfy',                 # if the client sends the VRFY command
     'deny',                 # after a plugin returned DENY, DENYSOFT
@@ -62,6 +63,21 @@ HOOKS = [
     'rcpt_parse',
     'auth_parse'
 ]
+
+def hook(hook_name):
+    """
+    Specify a method has a hook handler.
+    """
+    if type(hook_name) is FunctionType:
+        hook_name._is_hook = True
+        hook_name._hook_name = hook_name.func_name
+        return hook_name
+
+    def wrapper(func):
+        func._is_hook = True
+        func._hook_name = hook_name
+        return func
+    return wrapper
 
 class HookManager(object):
     """ 
