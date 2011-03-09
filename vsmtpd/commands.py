@@ -58,7 +58,8 @@ def parse_mail(command, line):
     m = mail_re.match(line)
     if not m:
         raise DenyError('Syntax error in command')
-    return (m.group('path'), m.group('opts'))
+    return (m.group('path'), m.group('opts').split() if 
+        m.group('opts') else [])
 
 parsers = {
     'rcpt': parse_rcpt,
