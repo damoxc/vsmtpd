@@ -43,7 +43,6 @@ rcpt_re = re.compile(r'\s*TO:\s*(?P<path><' + qstring + r'''> # <addr>
                      )\s*(\s(?P<opts>.*))? # Optional WS + ESMTP options
                      $''', re.I | re.X)
 
-
 def parse(command, line):
     if not line:
         return None
@@ -52,7 +51,11 @@ def parse(command, line):
         return parsers[command](command, line)
 
 def parse_rcpt(command, line):
-    pass
+    m = rcpt_re.match(line)
+    if not m:
+        raise DenyError('Syntax error in command')
+    return (m.group('path'), m.group('opts').split() if 
+        m.group('opts') else [])
 
 def parse_mail(command, line):
     m = mail_re.match(line)

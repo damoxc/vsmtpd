@@ -130,8 +130,8 @@ class Connection(object):
         return self._transaction
 
     def __init__(self, server, sock, address):
-        (self._rip, self._rport) = address
-        (self._lip, self._lport) = sock.getsockname()
+        self._rip, self._rport = address
+        self._lip, self._lport = sock.getsockname()
         self._server = server
         self._config = server.config
         self._socket = sock
@@ -279,7 +279,7 @@ class Connection(object):
         #else:
         #    pass
         try:
-            (addr, _params) = commands.parse('mail', line)
+            addr, _params = commands.parse('mail', line)
         except error.HookError as e:
             self.send_code(501, e.message or 'Syntax error in command')
             return
@@ -287,7 +287,7 @@ class Connection(object):
         params = {}
         for param in _params:
             try:
-                (key, value) = param.split('=')
+                key, value = param.split('=')
             except:
                 pass
             else:
@@ -298,6 +298,8 @@ class Connection(object):
             addr = self.run_hooks('mail_pre', tnx, addr, params) or addr
         except error.HookError as e:
             pass
+
+        log.debug('from email address: [%s]', addr)
 
         # Turn addr into an Address object now
         addr = Address(addr)
@@ -317,12 +319,53 @@ class Connection(object):
 
     @command
     def rcpt(self, line):
-        msg = self.run_hooks('rcpt_parse', line)
+        """
+        This method handles the RCPT command parsing and checking of the
+        recipient.
+
+        :param line: The rest of the command line
+        :type line: str
+        """
+
+        if not self.transaction.sender:
+            return self.send_code(503, 'Use MAIL before RCPT')
+        
+        log.info('full to_parameter: %s', line)
+
+        try:
+            addr, _params = commands.parse('rcpt', line)
+        except error.HookError as e:
+            self.send_code(501, e.message or 'Syntax error in command')
+            return
+
+        #msg = self.run_hooks('rcpt_parse', line)
+
+        params = {}
+        for param in _params:
+            try:
+                key, value = param.split('=')
+            except:
+                pass
+            else:
+                params[key.lower()] = value
+
         tnx = self.transaction
+        try:
+            addr = self.run_hooks('rcpt_pre', tnx, addr) or addr
+        except error.HookError as e:
+            pass
 
-        msg = self.run_hooks('rcpt_pre', tnx, addr)
+        log.debug('to email address: [%s]', addr)
 
-        msg = self.run_hooks('rcpt', tnx, addr)
+        try:
+            msg = self.run_hooks('rcpt', tnx, addr)
+        except error.HookError as e:
+            self.send_code(450 if e.soft else 550, e.message)
+            if e.disconnect:
+                self._disconnect()
+            return
+
+        self.send_code(450, 'No plugin decided if relaying is allowed')
 
     @command
     def vrfy(self, line):
