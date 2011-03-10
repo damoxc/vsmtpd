@@ -2,3 +2,4 @@
 *.egg-info
 .*.swp
 *.egg-link
+__pycache__/
