@@ -25,6 +25,9 @@ import random
 import hashlib
 import logging
 
+from email.message import Message
+from email.header import Header
+
 from gevent import Greenlet, Timeout, socket
 
 from vsmtpd import error
@@ -147,10 +150,8 @@ class Connection(object):
 
         while True:
             try:
-                self._timeout.start()
-                line = self._file.readline()
+                line = self.get_line()
                 if not line:
-                    log.info('Client disconnected')
                     break
 
                 line = line.strip()
@@ -166,14 +167,6 @@ class Connection(object):
                     continue
 
                 command(parts[1] if parts[1:] else '')
-
-            except socket.error as e:
-                log.info('Client disconnected')
-                break
-
-            except error.TimeoutError:
-                self.timeout()
-                break
 
             except Exception as e:
                 log.exception(e)
@@ -348,20 +341,39 @@ class Connection(object):
 
         try:
             msg = self.run_hooks('rcpt', tnx, addr)
+
+        except error.StopHooks as e:
+            return
+
         except error.HookError as e:
-            self.send_code(450 if e.soft else 550, e.message)
+            self.send_code(450 if e.soft else 550, e.message or 'relaying denied')
             if e.disconnect:
                 self._disconnect()
             return
+        else:
+            #if not msg:
+            #    return self.send_code(450, 
+            #        'No plugin decided if relaying is allowed')
 
-        self.send_code(450, 'No plugin decided if relaying is allowed')
+            self.send_code(250, '%s, recipient ok', addr)
+            self.transaction.add_recipient(addr)
 
     @command
     def vrfy(self, line):
-        self.run_hooks('vrfy')
+        try:
+            message = self.run_hooks('vrfy')
+        except error.DenyError as e:
+            self.send_code(554, e.message or 'Access Denied')
+            self.reset_transaction()
+        else:
+            if not message:
+                return self.send_code(252,
+                    "Just try sending a mail and we'll see how it turns out...")
+            self.send_code(250, 'User OK' if message == True else message)
 
     @command
     def rset(self, line):
+        self.reset_transaction()
         self.send_code(250, 'OK')
 
     @command
@@ -378,7 +390,61 @@ class Connection(object):
         if not self.transaction.recipients:
             return self.send_code(503, 'RCPT first please')
 
-        return self.send_code(354, 'go ahead')
+        self.send_code(354, 'go ahead')
+
+        # Cancel the timeout
+        self._timeout.cancel()
+
+        buf = ''
+        size = 0
+        size_limit = self._server.config.get('size_limit', 0)
+        in_header = True
+        complete = False
+        lines = 0
+
+        log.debug('size_limit: %d / size: %d', size_limit, size)
+        
+        line = self.get_line()
+        while line:
+            # Check to see if it is the last line
+            if line == '.\r\n':
+                complete = True
+                break
+
+            lines += 1
+
+            # Reject messages that have either bare LF or CR. Thanks to
+            # qpsmtpd for this tip.
+            if line == '.\n' or line == '.\r':
+                return self.disconnect(421,
+                    'See http://smtpd.develooper.com/barelf.html')
+
+            # Increase the data size of this email
+            size += len(line)
+
+            # Check to make sure that no naughty clients ignored our size
+            # advertisement at the beginning.
+            if size_limit and size >= size_limit:
+                self.send_code(552, 'Message too big!');
+                self.reset_transaction()
+                return
+
+            if in_header:
+                buf += line
+                if line.startswith(' '):
+                    continue
+                header = Header(buf)
+                buf = ''
+
+            log.debug('size_limit: %d / size: %d', size_limit, size)
+            
+            line = self.get_line()
+
+        if not complete:
+            self.send_code(451, 'Incomplete DATA')
+            return self.reset_transaction()
+
+        self.send_code(451, 'Not implemented yet.')
 
     @command
     def quit(self, line):
@@ -403,7 +469,7 @@ class Connection(object):
 
         self.disconnect(221, msg)
 
-    def unknown(self, method, rest):
+    def unknown(self, *parts):
         try:
             self.run_hooks('unknown', self._transaction, *parts)
         except error.DenyDisconnectError as e:
@@ -451,6 +517,33 @@ class Connection(object):
         # correctly.
         self._connected = False
 
+    def get_line(self):
+        try:
+            self._timeout.start()
+            line = self._file.readline()
+
+            if line:
+                return line
+
+            log.info('Client disconnected')
+            return
+
+        except socket.error as e:
+            log.info('Client disconnected')
+
+        except error.TimeoutError:
+            self.timeout()
+
+        except Exception as e:
+            log.exception(e)
+            try:
+                self.disconnect(451, 'Internal error - try again later')
+            except:
+                pass
+
+        finally:
+            self._timeout.cancel()
+
     def greeting(self):
         return '%s ESMTP' % self.local_host
 
@@ -475,6 +568,7 @@ class Connection(object):
     def send_line(self, line):
         self._file.write(line + '\r\n')
         self._file.flush()
+        log.info(line)
 
     def send_syntax_error(self):
         self.send_code(500, 'Error: bad syntax')
