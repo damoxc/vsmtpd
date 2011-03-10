@@ -26,18 +26,16 @@ import ConfigParser
 CONFIG_DIR = '/etc/vsmtpd'
 
 def load_config(name):
-    path = os.path.join(CONFIG_DIR, name)
-    config = ConfigParser.SafeConfigParser(allow_no_value=True)
+    path = name if os.path.exists(name) else os.path.join(CONFIG_DIR, name)
+    config = ConfigParser.SafeConfigParser()
     config.read(path)
     return config
 
 def load_simple_config(name):
     path = os.path.join(CONFIG_DIR, name)
-    if not os.path.exists(path):
-        return []
-
-    for line in open(path):
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        yield line
+    if os.path.exists(path):
+        for line in open(path):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            yield line

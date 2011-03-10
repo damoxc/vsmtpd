@@ -1,0 +1,31 @@
+; Main configuration
+;
+; This file is used to configure vsmtpd and all it's plugins.
+;
+
+[vsmtpd]
+
+; The port to listen on
+port = 25 
+
+; The interface to listen on
+;interface =
+
+; The maximum amount of data to receive in bytes
+;sizelimit = 252342362
+
+; The name to print out when sending the greeting
+;smtphelohost = 
+
+; Below is where the plugins are enabled and configured. A plugin is enabled
+; by creating a section with the plugin name prefixed with plugin:
+;
+; To enable plugins in subfolders use a . as a folder seperator, such as:
+;
+; [plugin:queue.postfix_queue]
+; socket = /var/spool/postfix/public/cleanup
+;
+
+[plugin:hosts_allow]
+
+[plugin:fortune_cookie]
