@@ -38,9 +38,15 @@ class CommandParseError(Error):
 class AddressParseError(Error):
     pass
 
+
+# The below are used to allow for hooks to have an impact upon the SMTP
+# conversation. They are able to raise these errors and stop hooks from
+# running.
 class HookError(Error):
     soft = False
     disconnect = False
+    done = False
+    okay = False
     
     @property
     def message(self):
@@ -48,6 +54,12 @@ class HookError(Error):
 
 class StopHooks(HookError):
     pass
+
+class HookOkay(StopHooks):
+    okay = True
+
+class HookDone(StopHooks):
+    done = True
 
 class DenyError(HookError):
     pass
