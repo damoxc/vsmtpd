@@ -21,11 +21,15 @@
 #
 
 import logging
+import vsmtpd.logging_setup
 
 from optparse import OptionParser
 from gevent.server import StreamServer
+
 from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
+
+log = None
 
 class Daemon(object):
 
@@ -36,7 +40,6 @@ class Daemon(object):
             'me': 'smtp.uk-plc.net',
             'sizelimit': 252342362
         }
-        self.smtpd = StreamServer(('0.0.0.0', 2500), self.handle)
         self.hook_manager = HookManager()
 
     def fire(self, hook_name, *args, **kwargs):
@@ -49,9 +52,13 @@ class Daemon(object):
         connection.run_hooks('disconnect', connection)
 
     def start(self):
+        log.info('Starting server on 0.0.0.0 port 2500')
+        self.smtpd = StreamServer(('0.0.0.0', 2500), self.handle)
         self.smtpd.serve_forever()
 
 def main():
+    global log
+
     parser = OptionParser()
     parser.add_option('-l', '--listen', dest='listen',  action='append',
         help='listen on this address')
@@ -59,11 +66,15 @@ def main():
         help='set the default port to listen on')
     (options, args) = parser.parse_args()
 
+    # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)s] [%(conn_id)s] %(message)s',
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
+
+    log = logging.getLogger(__name__)
+    log.connection_id = 'master'
 
     daemon = Daemon(options, args)
     try:
