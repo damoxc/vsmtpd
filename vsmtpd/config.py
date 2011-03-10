@@ -36,10 +36,8 @@ def load_simple_config(name):
     if not os.path.exists(path):
         return []
 
-    items = []
     for line in open(path):
         line = line.strip()
-        if line.startswith('#'):
+        if not line or line.startswith('#'):
             continue
-        items.append(line)
-    return items
+        yield line
