@@ -365,6 +365,22 @@ class Connection(object):
         self.send_code(250, 'OK')
 
     @command
+    def data(self, line):
+        """
+        This method handles the DATA command in the SMTP conversation.
+
+        :param line: The rest of the command line
+        :type line: str
+        """
+        if not self.transaction.sender:
+            return self.send_code(503, 'MAIL first please')
+
+        if not self.transaction.recipients:
+            return self.send_code(503, 'RCPT first please')
+
+        return self.send_code(354, 'go ahead')
+
+    @command
     def quit(self, line):
         msg = ''
         
