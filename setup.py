@@ -35,7 +35,7 @@ setup(
     packages     = find_packages(exclude=['tests', 'docs']),
     entry_points = {
         'console_scripts': [
-            'vsmtpd = vsmtpd.daemon:main'
+            'vsmtpd = vsmtpd.vsmtpd:main'
         ]
     }
 )

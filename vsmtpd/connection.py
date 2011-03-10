@@ -129,6 +129,10 @@ class Connection(object):
     def transaction(self):
         return self._transaction
 
+    @property
+    def id(self):
+        return self._cid
+
     def __init__(self, server, sock, address):
         self._rip, self._rport = address
         self._lip, self._lport = sock.getsockname()
@@ -144,13 +148,17 @@ class Connection(object):
         self._relay_client = False
         self._connected = True
         self._transaction = None
-        self._commands = dict([(c, getattr(self, c)) for c in dir(self)
-            if getattr(getattr(self, c), '_is_command', False)])
 
         # Generate a unique identifier for this connection
         sha_hash = hashlib.sha1(self._rip)
         sha_hash.update(str(time.time()))
         self._cid    = sha_hash.hexdigest()
+        log.connection_id = self._cid[:7]
+
+        # Add all the command controller methods
+        self._commands = dict([(c, getattr(self, c)) for c in dir(self)
+            if getattr(getattr(self, c), '_is_command', False)])
+
 
     def accept(self):
         log.info('Accepted connection from %s', self.remote_host)

@@ -30,8 +30,9 @@ from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
 
 log = None
+vsmtpd = None
 
-class Daemon(object):
+class Vsmtpd(object):
 
     def __init__(self, options, args):
         self.options = options
@@ -50,6 +51,7 @@ class Daemon(object):
         connection.run_hooks('pre_connection', connection)
         connection.accept()
         connection.run_hooks('disconnect', connection)
+        log.info('cleaning up after %s', connection.id[:7])
 
     def start(self):
         log.info('Starting server on 0.0.0.0 port 2500')
@@ -57,7 +59,7 @@ class Daemon(object):
         self.smtpd.serve_forever()
 
 def main():
-    global log
+    global log, vsmtpd
 
     parser = OptionParser()
     parser.add_option('-l', '--listen', dest='listen',  action='append',
@@ -76,9 +78,9 @@ def main():
     log = logging.getLogger(__name__)
     log.connection_id = 'master'
 
-    daemon = Daemon(options, args)
+    vsmtpd = Vsmtpd(options, args)
     try:
-        daemon.start()
+        vsmtpd.start()
     except KeyboardInterrupt:
         #from guppy import hpy
         #h = hpy()
