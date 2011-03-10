@@ -59,6 +59,8 @@ class Transaction(object):
 
     @sender.setter
     def sender(self, value):
+        if not isinstance(value, Address):
+            value = Address(value)
         self._sender = value
         return self._sender
 
@@ -68,7 +70,9 @@ class Transaction(object):
         self._sender     = None
 
     def add_recipient(self, recipient):
-        pass
+        if not isinstance(recipient, Address):
+            recipient = Address(recipient)
+        self._recipients.append(recipient)
 
     def remove_recipient(self, recipient):
         pass
