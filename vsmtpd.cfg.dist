@@ -12,13 +12,31 @@ port = 25
 ;interface =
 
 ; The maximum amount of data to receive in bytes
-;sizelimit = 252342362
+;size_limit = 252342362
 
 ; The name to print out when sending the greeting
-;smtphelohost = 
+;smtp_helo_host = 
 
 ; Limit the number of connections this server will accept
-connectionlimit = 100
+connection_limit = 100
+
+; SSL Configuration
+
+;keyfile = 
+
+;certfile =
+
+;cert_reqs =
+
+;ssl_version =
+
+;ca_certs = 
+
+;suppress_ragged_eofs =
+
+;do_handshake_on_connect =
+
+;ciphers =
 
 ; Below is where the plugins are enabled and configured. A plugin is enabled
 ; by creating a section with the plugin name prefixed with plugin:
