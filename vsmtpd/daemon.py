@@ -23,8 +23,9 @@
 import logging
 import vsmtpd.logging_setup
 
-from optparse import OptionParser
+from gevent.pool import Pool
 from gevent.server import StreamServer
+from optparse import OptionParser
 
 from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
@@ -41,6 +42,7 @@ class Vsmtpd(object):
             'me': 'smtp.uk-plc.net',
             'sizelimit': 252342362
         }
+        self.pool = Pool(100)
         self.hook_manager = HookManager()
 
     def fire(self, hook_name, *args, **kwargs):
@@ -51,12 +53,12 @@ class Vsmtpd(object):
         connection.run_hooks('pre_connection', connection)
         connection.accept()
         connection.run_hooks('disconnect', connection)
-        log.info('cleaning up after %s', connection.id[:7])
 
     def start(self):
         log.info('Starting server on 0.0.0.0 port 2500')
-        self.smtpd = StreamServer(('0.0.0.0', 2500), self.handle)
-        self.smtpd.serve_forever()
+        self.server = StreamServer(('0.0.0.0', 2500), self.handle,
+            spawn=self.pool)
+        self.server.serve_forever()
 
 def main():
     global log, vsmtpd
