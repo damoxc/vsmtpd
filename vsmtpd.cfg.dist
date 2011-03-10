@@ -17,6 +17,9 @@ port = 25
 ; The name to print out when sending the greeting
 ;smtphelohost = 
 
+; Limit the number of connections this server will accept
+connectionlimit = 100
+
 ; Below is where the plugins are enabled and configured. A plugin is enabled
 ; by creating a section with the plugin name prefixed with plugin:
 ;
