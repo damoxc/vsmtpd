@@ -21,13 +21,15 @@
 #
 
 import time
+import random
 import hashlib
 import logging
 
 from gevent import Greenlet, Timeout, socket
-from vsmtpd import error, commands, hooks
 
+from vsmtpd import error
 from vsmtpd.address import Address
+from vsmtpd.commands import parse as parse_command
 from vsmtpd.transaction import Transaction
 
 log = logging.getLogger(__name__)
@@ -37,33 +39,59 @@ def command(func):
     return func
 
 class Connection(object):
+    """
+    This class contains the majority of the logic behind the core of vsmtpd
+    It handles interacting with the SMTP client and dispatching hook calls
+    to the plugins.
+    """
 
     @property
     def local_ip(self):
+        """
+        The IP address of the server connection.
+        """
         return self._lip
 
     @property
     def local_host(self):
+        """
+        The hostname of the server connection.
+        """
         return self._lhost
 
     @property
     def local_port(self):
+        """
+        The port of the server connection.
+        """
         return self._lport
 
     @property
     def remote_ip(self):
+        """
+        The IP address of the remote client.
+        """
         return self._rip
 
     @property
     def remote_host(self):
+        """
+        The hostname of the remote client.
+        """
         return self._rhost
 
     @property
     def remote_port(self):
+        """
+        The port of the remote client.
+        """
         return self._rport
 
     @property
     def hello(self):
+        """
+        Whether
+        """
         return self._hello
 
     @property
@@ -105,13 +133,13 @@ class Connection(object):
         # Generate a unique identifier for this connection
         sha_hash = hashlib.sha1(self._rip)
         sha_hash.update(str(time.time()))
+        sha_hash.update(str(random.getrandbits(64)))
         self._cid    = sha_hash.hexdigest()
         log.connection_id = self._cid[:7]
 
         # Add all the command controller methods
         self._commands = dict([(c, getattr(self, c)) for c in dir(self)
             if getattr(getattr(self, c), '_is_command', False)])
-
 
     def accept(self):
         log.info('Accepted connection from %s', self.remote_host)
@@ -134,7 +162,7 @@ class Connection(object):
 
                 command = self._commands.get(parts[0].lower())
                 if not command:
-                    self.run_hooks('unknown', self._transaction, *parts)
+                    self.unknown(*parts)
                     continue
 
                 command(parts[1] if parts[1:] else '')
@@ -240,7 +268,7 @@ class Connection(object):
         #else:
         #    pass
         try:
-            addr, _params = commands.parse('mail', line)
+            addr, _params = parse_command('mail', line)
         except error.HookError as e:
             self.send_code(501, e.message or 'Syntax error in command')
             return
@@ -294,7 +322,7 @@ class Connection(object):
         log.info('full to_parameter: %s', line)
 
         try:
-            addr, _params = commands.parse('rcpt', line)
+            addr, _params = parse_command('rcpt', line)
         except error.HookError as e:
             self.send_code(501, e.message or 'Syntax error in command')
             return
@@ -359,8 +387,16 @@ class Connection(object):
 
         self.disconnect(221, msg)
 
-    def do_UNKNOWN(self, method, rest):
-        self.fire('unknown', self.transaction, method, rest)
+    def unknown(self, method, rest):
+        try:
+            self.run_hooks('unknown', self._transaction, *parts)
+        except error.DenyDisconnectError as e:
+            self.disconnect(521, e.message)
+        except error.DenyError as e:
+            self.send_code(500, e.message)
+        except error.HookError as e:
+            if not e.done:
+                self.send_code(500, 'Unrecognized command')
 
     def respond_UNKNOWN(self, transaction, method, rest):
         self.send_code(500, 'Command not implemented')
