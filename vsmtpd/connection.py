@@ -28,60 +28,13 @@ from gevent import Greenlet, Timeout, socket
 from vsmtpd import error, commands, hooks
 
 from vsmtpd.address import Address
+from vsmtpd.transaction import Transaction
 
 log = logging.getLogger(__name__)
 
 def command(func):
     func._is_command = True
     return func
-
-class Transaction(object):
-
-    @property
-    def connection(self):
-        return self._connection
-
-    @property
-    def body_filename(self):
-        """
-        Returns the temporary filename used to store the message contents;
-        useful for virus scanners so that an additional copy doesn't need
-        to be made.
-
-        Calling `body_filename` also forces spooling to disk. A message is
-        not spooled to disk if it's size is smaller than
-        config['size_threshold'], default threshold is 0, the sample config
-        file sets this to 10000.
-        """
-        pass
-
-    @property
-    def data_size(self):
-        return 0
-
-    @property
-    def recipients(self):
-        return self._recipients
-
-    @property
-    def sender(self):
-        return self._sender
-
-    @sender.setter
-    def sender(self, value):
-        self._sender = value
-        return self._sender
-    
-    def __init__(self, connection):
-        self._connection = connection
-        self._recipients = []
-        self._sender     = None
-
-    def add_recipient(self, recipient):
-        pass
-
-    def remove_recipient(self, recipient):
-        pass
 
 class Connection(object):
 
