@@ -25,6 +25,11 @@ from tempfile import NamedTemporaryFile
 from vsmtpd.address import Address
 
 class Transaction(object):
+    """
+    The Transaction class contains all the data relating to a single SMTP
+    session. This data includes the message sender, recipients, message
+    headers and body.
+    """
 
     @property
     def connection(self):
@@ -64,10 +69,20 @@ class Transaction(object):
 
     @property
     def data_size(self):
-        return 0
+        """
+        Get the current size of the email. Note that this is not the size
+        of the message that will be queued, it si the size of what the
+        client sent after the "DATA" command.
+        """
+        return self._body.tell() if self._body else 0
 
     @property
     def notes(self):
+        """
+        Set notes to do with the transaction. This is a piece of data that
+        you wish to attach to the transaction and read somewhere else. For
+        example you can use this to pass data between plugins.
+        """
         return self._nodes = {}
 
     @property
@@ -80,6 +95,9 @@ class Transaction(object):
 
     @property
     def sender(self):
+        """
+        Get or set the sender of the email to be used in the mail envelope.
+        """
         return self._sender
 
     @sender.setter
@@ -98,6 +116,12 @@ class Transaction(object):
         self._notes      = {}
 
     def add_recipient(self, recipient):
+        """
+        Add a recipient to the mail envelope of this message.
+
+        :param recipient: The address to add
+        :type recipient: str or Address
+        """
         if not isinstance(recipient, Address):
             recipient = Address(recipient)
         self._recipients.append(recipient)
@@ -114,6 +138,12 @@ class Transaction(object):
         self._body.write(data)
 
     def remove_recipient(self, recipient):
+        """
+        Remove a recipient from the mail envelope of this message.
+
+        :param recipient: The address to remove
+        :type recipient: str or Address
+        """
         if not isinstance(recipient, Address):
             recipient = Address(recipient)
         self._recipients.remove(recipient)
@@ -127,8 +157,8 @@ class Transaction(object):
             return
 
         # Create the named temporary file to write the data to
-        fh = NamedTemporaryFile(dir='/tmp', prefix='')
-        fh.write(self._body.getvalue())
-        self._body.close()
-        self._body = fh
-        self._body_fn = fh.name
+        body = self._body
+        newbody = self._body = NamedTemporaryFile(dir='/tmp', prefix='')
+        newbody.write(body.getvalue())
+        newbody.seek(body.tell(), 0)
+        self._body_fn = newbody.name
