@@ -111,6 +111,10 @@ class Connection(object):
         return self._config
 
     @property
+    def notes(self):
+        return self._notes
+
+    @property
     def transaction(self):
         return self._transaction
 
@@ -121,18 +125,19 @@ class Connection(object):
     def __init__(self, server, sock, address):
         self._rip, self._rport = address
         self._lip, self._lport = sock.getsockname()
-        self._server = server
-        self._config = server.config
-        self._socket = sock
-        self._file   = sock.makefile()
-        self._rhost  = socket.getfqdn(self._rip)
-        self._lhost  = socket.getfqdn(self._lip)
-        self._timeout = Timeout(30, error.TimeoutError)
-        self._hello = None
-        self._hello_host = ''
+        self._server       = server
+        self._config       = server.config
+        self._socket       = sock
+        self._file         = sock.makefile()
+        self._rhost        = socket.getfqdn(self._rip)
+        self._lhost        = socket.getfqdn(self._lip)
+        self._timeout      = Timeout(30, error.TimeoutError)
+        self._hello        = None
+        self._hello_host   = ''
         self._relay_client = False
-        self._connected = True
-        self._transaction = None
+        self._connected    = True
+        self._transaction  = None
+        self._notes        = {}
 
         # Generate a unique identifier for this connection
         sha_hash = hashlib.sha1(self._rip)
