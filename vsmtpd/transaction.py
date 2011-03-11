@@ -20,6 +20,8 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+from cStringIO import StringIO
+from tempfile import NamedTemporaryFile
 from vsmtpd.address import Address
 
 class Transaction(object):
@@ -30,6 +32,16 @@ class Transaction(object):
         Returns the Connection that this transaction belongs to.
         """
         return self._connection
+
+    @property
+    def body(self):
+        """
+        Returns the file-like object that contains the body of the email.
+        This may be an actual file handle or simply a file-like object in
+        memory depending on the email size of if body_filename has not
+        been accessed.
+        """
+        return self._body
 
     @property
     def body_filename(self):
@@ -43,14 +55,27 @@ class Transaction(object):
         config['size_threshold'], default threshold is 0, the sample config
         file sets this to 10000.
         """
-        pass
+        # We have to write the email to disk now into our spool directory
+        # and update the body variable.
+        if not self._body_fn and self._body:
+            self.flush()
+
+        return self._body_fn
 
     @property
     def data_size(self):
         return 0
 
     @property
+    def notes(self):
+        return self._nodes = {}
+
+    @property
     def recipients(self):
+        """
+        This returns the list of the current recipients for the mail
+        envelope.
+        """
         return self._recipients
 
     @property
@@ -68,11 +93,42 @@ class Transaction(object):
         self._connection = connection
         self._recipients = []
         self._sender     = None
+        self._body       = None
+        self._body_fn    = None
+        self._notes      = {}
 
     def add_recipient(self, recipient):
         if not isinstance(recipient, Address):
             recipient = Address(recipient)
         self._recipients.append(recipient)
 
+    def body_write(self, data):
+        """
+        Write data to the end of the email.
+
+        :param data: The data to add to the end of the email
+        :type data: str
+        """
+        if not self._body:
+            self._body = StringIO()
+        self._body.write(data)
+
     def remove_recipient(self, recipient):
-        pass
+        if not isinstance(recipient, Address):
+            recipient = Address(recipient)
+        self._recipients.remove(recipient)
+
+    def flush(self):
+        """
+        Flushes the data held in memory to a temporary file on disk.
+        """
+        # Check to see if the data has been flushed already
+        if self._body_fn:
+            return
+
+        # Create the named temporary file to write the data to
+        fh = NamedTemporaryFile(dir='/tmp', prefix='')
+        fh.write(self._body.getvalue())
+        self._body.close()
+        self._body = fh
+        self._body_fn = fh.name
