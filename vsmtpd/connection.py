@@ -21,6 +21,7 @@
 #
 
 import time
+import gevent
 import random
 import hashlib
 import logging
@@ -28,7 +29,7 @@ import logging
 from email.message import Message
 from email.header import Header
 
-from gevent import Greenlet, Timeout, socket
+from gevent import Timeout, socket
 
 from vsmtpd import error
 from vsmtpd.address import Address
@@ -149,18 +150,17 @@ class Connection(object):
         self.send_code(220, self.greeting())
 
         while True:
+            line = self.get_line()
+            if not line:
+                break
+            
+            parts = line.strip().split(None, 1)
+
+            if not parts:
+                self.send_syntax_error()
+                continue
+
             try:
-                line = self.get_line()
-                if not line:
-                    break
-
-                line = line.strip()
-                parts = line.split(None, 1)
-
-                if not parts:
-                    self.send_syntax_error()
-                    continue
-
                 command = self._commands.get(parts[0].lower())
                 if not command:
                     self.unknown(*parts)
@@ -174,9 +174,6 @@ class Connection(object):
                     self.disconnect(451, 'Internal error - try again later')
                 finally:
                     break
-
-            finally:
-                self._timeout.cancel()
 
         self._disconnect()
 
@@ -522,14 +519,15 @@ class Connection(object):
             self._timeout.start()
             line = self._file.readline()
 
+            # If there is a line we can return it
             if line:
                 return line
 
-            log.info('Client disconnected')
-            return
+            # If line is None then the client must have disconnected
+            log.info('client disconnected')
 
         except socket.error as e:
-            log.info('Client disconnected')
+            log.info('client disconnected')
 
         except error.TimeoutError:
             self.timeout()
@@ -546,6 +544,15 @@ class Connection(object):
 
     def greeting(self):
         return '%s ESMTP' % self.local_host
+
+    def kill(self):
+        """
+        This method can be used to kill the connection by killing the
+        Greenlet it is running in, use cautiously as this isn't a nice
+        way to disconnect clients and should only be used if the client
+        has already disconnected.
+        """
+        gevent.getcurrent().kill(block=True)
 
     def reset_transaction(self):
         if self._transaction:
