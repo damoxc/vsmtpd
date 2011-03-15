@@ -21,6 +21,8 @@ port = 25
 connection_limit = 100
 
 ; SSL Configuration
+; The following arguments get passed in to the constructor of the server
+; and enables SSL.
 
 ;keyfile = 
 
