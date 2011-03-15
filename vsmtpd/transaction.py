@@ -83,7 +83,7 @@ class Transaction(object):
         you wish to attach to the transaction and read somewhere else. For
         example you can use this to pass data between plugins.
         """
-        return self._nodes = {}
+        return self._nodes
 
     @property
     def recipients(self):
