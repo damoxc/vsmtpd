@@ -9,11 +9,12 @@ def send_test_msg():
     try:
         smtp.sendmail('test@example.com', 'dave@example.com', """Subject: Testing
 From: <test@example.com>
-To: <dave@example.com>
+To: <john@example.com>
 
 This is a test ja?!""")
     except:
         pass
 
-jobs = [gevent.spawn(send_test_msg) for i in xrange(0, 500)]
-gevent.joinall(jobs)
+while True:
+    jobs = [gevent.spawn(send_test_msg) for i in xrange(0, 250)]
+    gevent.joinall(jobs)
