@@ -50,6 +50,8 @@ def parse(command, line):
     if command in parsers:
         return parsers[command](command, line)
 
+    return line.split()
+
 def parse_rcpt(command, line):
     m = rcpt_re.match(line)
     if not m:
