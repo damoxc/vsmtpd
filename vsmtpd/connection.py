@@ -29,7 +29,8 @@ import logging
 from email.message import Message
 from email.header import Header
 
-from gevent import Timeout, socket
+from gevent import socket
+from gevent import Timeout
 
 from vsmtpd import error
 from vsmtpd.address import Address
