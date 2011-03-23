@@ -22,6 +22,10 @@
 
 import os
 import sys
+try:
+    import cStringIO as StringIO
+except ImportError:
+    import StringIO
 import collections
 import ConfigParser
 
@@ -132,9 +136,21 @@ if sys.version_info < (2, 7):
 else:
     OrderedDict = collections.OrderedDict
 
-def load_config(name):
+def _dict_to_defaults(sections):
+    fp = StringIO.StringIO()
+    for name, section in sections.iteritems():
+        fp.write('[%s]\n' % name)
+        for key, value in section.iteritems():
+            fp.write('%s = %s\n' % (key, value))
+        fp.write('\n')
+    fp.seek(0)
+    return fp
+
+def load_config(name, defaults=None):
     path = name if os.path.exists(name) else os.path.join(CONFIG_DIR, name)
     config = ConfigParser.SafeConfigParser(dict_type=OrderedDict)
+    if defaults:
+        config.readfp(_dict_to_defaults(defaults))
     config.read(path)
     return config
 
