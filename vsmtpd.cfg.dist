@@ -52,3 +52,5 @@ connection_limit = 100
 [plugin:hosts_allow]
 
 [plugin:fortune_cookie]
+
+; vim: ft=dosini
