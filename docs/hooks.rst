@@ -76,3 +76,11 @@ data
 :called:
 	after the client sends the DATA command, before any of the message data
 	is sent.
+
+quit
+----
+:called:
+	directly after the client issues the QUIT command
+
+:arguments:
+	- connection
