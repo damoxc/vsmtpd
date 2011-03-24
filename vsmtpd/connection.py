@@ -191,16 +191,17 @@ class Connection(NoteObject):
             return self.send_code(503, 'But you already said HELO...')
 
         try:
-            self.run_hooks('helo', line)
-
-        except error.StopHooksError:
-            return
+            self.run_hooks('helo', self.connection, line)
 
         except error.HookError as e:
-            self.send_code(450 if e.soft else 550, e.message)
-            if e.disconnect:
-                self._disconnect()
-            return
+            if not (e.okay or e.done):
+                self.send_code(450 if e.soft else 550, e.message)
+                if e.disconnect:
+                    self._disconnect()
+                return
+
+            if not e.okay:
+                return
 
         self._hello = 'helo'
         self._hello_host = line
@@ -215,22 +216,22 @@ class Connection(NoteObject):
             return self.send_code(503, 'But you already said HELO...')
 
         try:
-            self.run_hooks('ehlo', line)
-
-        except error.StopHooksError:
-            return
+            self.run_hooks('ehlo', self.connectionn, line)
 
         except error.HookError as e:
-            self.send_code(450 if e.soft else 550, e.message)
-            if e.disconnect:
-                self._disconnect()
-            return
+            if not (e.okay or e.done):
+                self.send_code(450 if e.soft else 550, e.message)
+                if e.disconnect:
+                    self._disconnect()
+                return
+
+            if not e.okay:
+                return
 
         self._hello = 'ehlo'
         self._hello_host = line
 
         hostname = self._config.get('helo_host') or self.local_host
-        print repr(self._config.get('helo_host'))
 
         args = []
         size_limit = self._config.getint('size_limit')
@@ -460,9 +461,8 @@ class Connection(NoteObject):
             msg = self.run_hooks('quit')
 
         except error.HookError as e:
-            if isinstance(e, error.StopHooksError):
-                self._disconnect()
-                return
+            if e.done:
+                return self._disconnect()
 
             if e.message:
                 msg = e.message
