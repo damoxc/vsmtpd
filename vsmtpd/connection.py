@@ -36,6 +36,7 @@ from vsmtpd import error
 from vsmtpd.address import Address
 from vsmtpd.commands import parse as parse_command
 from vsmtpd.transaction import Transaction
+from vsmtpd.util import NoteObject
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def command(func):
     func._is_command = True
     return func
 
-class Connection(object):
+class Connection(NoteObject):
     """
     This class contains the majority of the logic behind the core of vsmtpd
     It handles interacting with the SMTP client and dispatching hook calls
@@ -138,7 +139,6 @@ class Connection(object):
         self._relay_client = False
         self._connected    = True
         self._transaction  = None
-        self._notes        = {}
 
         # Generate a unique identifier for this connection
         sha_hash = hashlib.sha1(self._rip)

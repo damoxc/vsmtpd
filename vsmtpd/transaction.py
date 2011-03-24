@@ -23,8 +23,9 @@
 from cStringIO import StringIO
 from tempfile import NamedTemporaryFile
 from vsmtpd.address import Address
+from vsmtpd.util import NoteObject
 
-class Transaction(object):
+class Transaction(NoteObject):
     """
     The Transaction class contains all the data relating to a single SMTP
     session. This data includes the message sender, recipients, message
@@ -113,7 +114,6 @@ class Transaction(object):
         self._sender     = None
         self._body       = None
         self._body_fn    = None
-        self._notes      = {}
 
     def add_recipient(self, recipient):
         """

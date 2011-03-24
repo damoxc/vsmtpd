@@ -20,18 +20,17 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from email.utils import formataddr, parseaddr
-from vsmtpd.error import AddressParseError
+from email.utils import formataddr
+from email.utils import parseaddr
 
-class Address(object):
+from vsmtpd.error import AddressParseError
+from vsmtpd.util import NoteObject
+
+class Address(NoteObject):
 
     @property
     def canonify(self):
         return (self.user, self.host)
-
-    @property
-    def notes(self):
-        return self._notes
 
     def __init__(self, user, host=None, name=None):
         name, address = parseaddr(user)
@@ -43,8 +42,6 @@ class Address(object):
             self.user = user
             self.host = host
             self.name = name
-
-        self._notes = {}
     
     def format(self):
         return str(self)
