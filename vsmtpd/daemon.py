@@ -31,6 +31,7 @@ from vsmtpd.config import load_config
 from vsmtpd.config import ConfigWrapper
 from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
+from vsmtpd.plugins.manager import PluginManager
 
 log = None
 vsmtpd = None
@@ -45,18 +46,40 @@ class Vsmtpd(object):
         # Load the configuration for the server
         self.load_config()
 
+        # If we positive connection limit create a Pool with that limit
         connection_limit = self.config.getint('connection_limit')
-        if connection_limit:
+        if connection_limit > 0:
             self.pool = Pool(connection_limit)
             log.info('Limiting connections to %d', connection_limit)
+
+        # Create the hook manager
+        self.hook_manager = HookManager()
+
+        # Create the plugin manager
+        plugin_path = self.config.get('plugin_path').split(':')
+        self.plugin_manager = PluginManager(plugin_path)
 
         # Load the plugins
         for section in self._config.sections():
             if not section.startswith('plugin:'):
                 continue
-            plugin = section.split(':', 1)[1]
+            plugin_name = section.split(':', 1)[1]
+            try:
+                plugin_cls = self.plugin_manager.load(plugin_name)
+            except Exception as e:
+                log.fatal("Failed to load plugin '%s'", plugin_name)
+                log.exception(e)
+                exit(1)
 
-        self.hook_manager = HookManager()
+            try:
+                if self._config.options(section):
+                    plugin = plugin_cls(ConfigWrapper(self._config, section))
+                else:
+                    plugin = plugin_cls()
+            except Exception as e:
+                log.fatal("Failed to initialise plugin '%s'", plugin_Name)
+                log.exception(e)
+                exit(1)
 
     def fire(self, hook_name, *args, **kwargs):
         return self.hook_manager.dispatch_hook(hook_name, *args, **kwargs)
