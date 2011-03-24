@@ -29,7 +29,7 @@ The same as any python project::
 Plugins
 -------
 Wanting to mimick how qpsmtpd is put together, the core of vsmtpd does very
-little and denies mail from all senders, to all senders by default. The
-functionality to accept messages, authenticate, starttls etc. will all come
+little and denies mail to all recipients by default. The
+functionality to accept messages, authenticate etc. will all come
 from plugins that subscribe to hooks. See the docs/hooks.rst document for
 details on what these hooks do.
