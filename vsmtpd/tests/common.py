@@ -1,7 +1,7 @@
 #
-# vsmtpd/interfaces.py
+# vsmtpd/tests/common.py
 #
-# Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
+# Copyright (C) 2011 Damien Churchill <damoxc@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,15 +20,7 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from zope.interface import Interface
+from unittest import TestCase as BaseTestCase
 
-class IMessageQueue(Interface):
-    """
-    Interface for queuing a message to whatever it is that will perform
-    the actual mail delivery.
-    """
-
-    def queueMessage(message):
-        """
-        Queues a message to the source.
-        """
+class TestCase(BaseTestCase):
+    pass

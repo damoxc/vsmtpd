@@ -1,7 +1,7 @@
 #
 # vsmtpd/error.py
 #
-# Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
+# Copyright (C) 2011 Damien Churchill <damoxc@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,30 +23,52 @@
 class Error(Exception):
     pass
 
+class TimeoutError(Error):
+    pass
+
 class HookNotFoundError(Error):
     pass
 
 class PluginNotFoundError(Error):
     pass
 
-class HookError(Exception):
-    """
-    The base class for all hook errors.
-    """
-    
-    disconnect = False
+class CommandParseError(Error):
+    pass
 
-class DisconnectError(HookError):
+class AddressParseError(Error):
+    pass
+
+
+# The below are used to allow for hooks to have an impact upon the SMTP
+# conversation. They are able to raise these errors and stop hooks from
+# running.
+class HookError(Error):
+    soft = False
+    disconnect = False
+    done = False
+    okay = False
     
-    disconnect = True
+    @property
+    def message(self):
+        return self.args[0] if self.args else ''
+
+class StopHooksError(HookError):
+    pass
+
+class OkayError(StopHooksError):
+    okay = True
+
+class DoneError(StopHooksError):
+    done = True
 
 class DenyError(HookError):
-    
-    code = 550
+    pass
 
 class DenySoftError(HookError):
-    
-    code = 451
+    soft = True
+
+class DisconnectError(HookError):
+    disconnect = True
 
 class DenyDisconnectError(DenyError, DisconnectError):
     pass

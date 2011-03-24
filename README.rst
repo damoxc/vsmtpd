@@ -13,6 +13,11 @@ out of qpsmtpd (network i/o, spam scanning, virus checking), it seemed that
 an async model rather than fork model would be preferable in terms of
 memory consumption on inbound servers.
 
+After an initial effort of using Twisted however, it became apparent that
+Twisted's SMTP implementation wasn't suited for the sort of SMTP server
+vsmtpd is aspiring to be, so the core was switched to using gevent which
+allows for a very very efficient server.
+
 Installation
 ------------
 The same as any python project:

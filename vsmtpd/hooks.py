@@ -1,7 +1,7 @@
 #
-# vsmtpd/smtp.py
+# vsmtpd/hooks.py
 #
-# Copyright (C) 2010 Damien Churchill <damoxc@gmail.com>
+# Copyright (C) 2011 Damien Churchill <damoxc@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,243 +21,92 @@
 #
 
 import logging
-
-from twisted.internet import defer
-
-from vsmtpd.common import OK, DECLINED, DONE
-from vsmtpd.error import (HookNotFoundError, HookError, DenyError, 
-    DenySoftError, DenyDisconnectError, DenySoftDisconnectError)
+from types import FunctionType
+from vsmtpd.error import HookNotFoundError
+from vsmtpd.error import HookError
 
 log = logging.getLogger(__name__)
 
-def hook(func):
+HOOKS = [ 
+# SMTP hooks
+    'pre_connection',       # after the connection is accepted
+    'connect',              # at the start of a connection before the
+                            # greeting is sent
+    'post_connection',      # directly before the connection is finished or
+                            # if the client drops the connection.
+    'greeting',             # allows plugins to modify the greeting
+    'logging',              # when a log message is written
+    'config',               # when a config ``file`` is requested
+    'helo',                 # after the client sends HELO
+    'ehlo',                 # after the client sends EHLO
+    'reset_transaction',    # after the transaction is reset
+    'mail_pre',             # after the MAIL FROM: line sent by the client is parsed
+    'mail',                 # after the client sends the mail from command
+    'rcpt_pre',             # after the RCPT TO: line sent by the client is parsed
+    'rcpt',                 # after the client sends a RCPT TO: command
+    'data',                 # after the client sends the DATA command
+    'data_post',            # after the client sent the final ".\r\n" of a 
+                            # message.
+    'queue_pre',            # prior to the message being queued
+    'queue',                # used to queue the message
+    'queue_post',           # after the message has been queued
+    'quit',                 # after the client sent a QUIT command
+    'disconnect',           # after a plugin returned DENY(|SOFT)_DISCONNECT
+                            # or after the client sent the QUIT command
+    'unrecognized_command', # if the client sends an unkonwn command
+    'vrfy',                 # if the client sends the VRFY command
+    'deny',                 # after a plugin returned DENY, DENYSOFT
+    'ok',                   # after a plugin did not return DENY, etc.
+    'auth',                 #
+    'auth-plain',           #
+    'auth-login',           #
+    'auth-cram-md5',        #
+
+# Parsing hooks
+    'helo_parse',
+    'ehlo_parse',
+    'mail_parse',
+    'rcpt_parse',
+    'auth_parse'
+]
+
+def hook(hook_name):
     """
-    Decorator to mark a method as a hook handler.
+    Specify a method has a hook handler.
     """
-    func._hook_name = func.func_name
-    return func
+    if type(hook_name) is FunctionType:
+        hook_name._is_hook = True
+        hook_name._hook_name = hook_name.func_name
+        return hook_name
 
-class Hook(object):
-    """
-    Base class for a hook handler.
-
-    :param name: The hook name
-    :type name: str
-    """
-
-    errors = []
-
-    def __init__(self, name):
-        self.__name = name
-        self.__callbacks = []
-
-    def add_handler(self, callback):
-        """
-        Add a handler to the hook.
-
-        :param callback: The hook callback
-        :type callback: function
-        """
-        self.__callbacks.append(callback)
-
-    def handle(self, smtp, *args, **kwargs):
-        """
-        Default handler that loops over the callbacks calling them one at 
-        a time.
-        """
-        return defer.maybeDeferred(self._handle, smtp, 0, args, kwargs)
-
-    def _handle(self, smtp, n, args, kwargs):
-        """
-        Internal method that executes the callbacks one at a time, there
-        must be a better way to do this but it's the best way currently.
-        """
-
-        # Check to see if there are any callbacks left to call
-        if n >= len(self.__callbacks):
-            return (None, '')
-
-        return defer.maybeDeferred(self.__callbacks[n], *args, **kwargs
-            ).addCallback(self.on_result, smtp, n, args, kwargs)
-
-    def on_result(self, result, smtp, n, args, kwargs):
-        # Sanity check the result
-        if isinstance(result, tuple):
-            (result, message) = result
-        else:
-            message = ''
-
-        if result in (OK, DONE):
-            return (result, message)
-        elif n + 1 >= len(self.__callbacks):
-            return (None, '')
-        else:
-            return self._handle(smtp, n + 1, args, kwargs)
-
-    def remove_handler(self, callback):
-        """
-        Remove a handler from the hook.
-
-        :param callback: The callback to remove
-        :type callback: function
-        """
-        self.__callbacks.remove(callback)
-
-    @property
-    def name(self):
-        """
-        The hooks name
-        """
-        return self.__name
-
-class PreConnection(Hook):
-
-    def __init__(self):
-        super(PreConnection, self).__init__('pre_connection')
-
-class Connect(Hook):
-
-    def __init__(self):
-        super(Connect, self).__init__('connect')
-
-class PostConnection(Hook):
-
-    def __init__(self):
-        super(PostConnection, self).__init__('post_connection')
-
-class Greeting(Hook):
-
-    def __init__(self):
-        super(Greeting, self).__init__('greeting')
-
-class Helo(Hook):
-
-    def __init__(self):
-        super(Helo, self).__init__('helo')
-
-class Ehlo(Hook):
-
-    def __init__(self):
-        super(Ehlo, self).__init__('ehlo')
-
-class ResetTransaction(Hook):
-
-    def __init__(self):
-        super(ResetTransaction, self).__init__('reset_transaction')
-
-class Mail(Hook):
-
-    def __init__(self):
-        super(Mail, self).__init__('mail')
-
-class Rcpt(Hook):
-
-    def __init__(self):
-        super(Rcpt, self).__init__('rcpt')
-
-class Data(Hook):
-
-    def __init__(self):
-        super(Data, self).__init__('data')
-
-class DataPost(Hook):
-
-    def __init__(self):
-        super(DataPost, self).__init__('data_post')
-
-class QueuePre(Hook):
-
-    def __init__(self):
-        super(QueuePre, self).__init__('queue_pre')
-
-class Queue(Hook):
-
-    def __init__(self):
-        super(Queue, self).__init__('queue')
-
-class QueuePost(Hook):
-
-    def __init__(self):
-        super(QueuePost, self).__init__('queue_post')
-
-class Quit(Hook):
-    
-    def __init__(self):
-        super(Quit, self).__init__('quit')
-
-class Disconnect(Hook):
-
-    def __init__(self):
-        super(Disconnect, self).__init__('disconnect')
-
-class UnrecognizedCommand(Hook):
-
-    def __init__(self):
-        super(UnrecognizedCommand, self).__init__('unrecognized_command')
-
-class Vrfy(Hook):
-
-    def __init__(self):
-        super(Vrfy, self).__init__('vrfy')
-
-class Deny(Hook):
-
-    def __init__(self):
-        super(Deny, self).__init__('deny')
-
-class Ok(Hook):
-
-    def __init__(self):
-        super(Ok, self).__init__('ok')
-
-class Auth(Hook):
-
-    def __init__(self):
-        super(Auth, self).__init__('auth')
-
-class AuthPlain(Hook):
-
-    def __init__(self):
-        super(AuthPlain, self).__init__('auth-plain')
-
-class AuthLogin(Hook):
-    
-    def __init__(self):
-        super(AuthLogin, self).__init__('auth-login')
-
-class AuthCramMD5(Hook):
-
-    def __init__(self):
-        super(AuthCramMD5, self).__init__('auth-cram-md5')
+    def wrapper(func):
+        func._is_hook = True
+        func._hook_name = hook_name
+        return func
+    return wrapper
 
 class HookManager(object):
-    """
+    """ 
     Manage dispatching hook calls off to the correct places.
     """
 
     def __init__(self):
-        self.__hooks = {}
+        self.__hooks = dict([(h, []) for h in HOOKS])
 
-        # Create all the hooks
-        for hook in Hook.__subclasses__():
-            hook = hook()
-            self.__hooks[hook.name] = hook
-
-    def deregister(self, hook_name, callback):
+    def deregister_hook(self, hook_name, callback):
         """
-        Deregister a hook listener from the hook manager.
+        Deregister a hook from the hook manager.
 
         :param hook_name: The name of the hook to deregister
         :type hook_name: str
         :param callback: The hook callback to degregister
         :type callback: func
         """
-
         if hook_name not in self.__hooks:
             raise HookNotFoundError(hook_name)
-        self.__hooks[hook_name].remove_handler(callback)
+        self.__hooks[hook_name].remove(callback)
 
-    def register(self, hook_name, callback):
+    def register_hook(self, hook_name, callback):
         """
         Register a hook listener with the hook manager.
         
@@ -268,34 +117,39 @@ class HookManager(object):
         """
         if hook_name not in self.__hooks:
             raise HookNotFoundError(hook_name)
-        self.__hooks[hook_name].add_handler(callback)
+        self.__hooks[hook_name].append(callback)
 
-    def dispatch(self, smtp, hook_name, *args, **kwargs):
+    def register_object(self, obj):
+        """
+        Scans an object for hook handlers and registers
+        them with the hook manager.
+
+        :param obj: The object to scan for hook handlers
+        :type obj: object
+        """
+        log.debug('Scanning %r for hook handlers', obj)
+        for item in dir(obj):
+            item = getattr(obj, item)
+            if not getattr(item, '_is_hook', False):
+                continue
+            hook_name = getattr(item, '_hook_name')
+            self.register_hook(hook_name, item)
+
+    def dispatch_hook(self, hook_name, *args, **kwargs):
         """
         Fires a hook.
 
-        :param smtp: The instance of the SMTP calling the hook
-        :type smtp: vsmtpd.smtpd.SMTP
         :param hook_name: The name of the hook to call
         :type hook_name: str
         """
-        if hook_name not in self.__hooks:
-            raise HookNotFoundError(hook_name)
-        return self.__hooks[hook_name].handle(smtp, *args, **kwargs)
-
-    def scan_plugin(self, plugin):
-        """
-        Scans a plugin for any hook handlers.
-
-        :param plugin: The plugin object
-        :type plugin: object
-        """
-
-        # Loop over the plugins attributes checking to see if they are
-        # hook handlers.
-        for attr in dir(plugin):
-            hook_name = getattr(getattr(plugin, attr), '_hook_name', None)
-            if not hook_name:
-                continue
-            # Register the hook handler
-            self.register(hook_name, getattr(plugin, attr))
+        log.info('dispatching hook %r', hook_name)
+        for cb in self.__hooks[hook_name]:
+            try:
+                cb(*args, **kwargs)
+            except HookError:
+                raise # re-raise HookErrors
+            except Exception as e:
+                log.exception(e)
+                log.error('Error calling the hook handler from the %s plugin',
+                          cb.im_class.__module__)
+                raise
