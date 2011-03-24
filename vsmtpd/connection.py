@@ -320,6 +320,9 @@ class Connection(NoteObject):
         :type line: str
         """
 
+        if not self.transaction:
+            return self.send_code(503, 'Use MAIL before RCPT')
+
         if not self.transaction.sender:
             return self.send_code(503, 'Use MAIL before RCPT')
         
