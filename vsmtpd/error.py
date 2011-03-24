@@ -52,13 +52,13 @@ class HookError(Error):
     def message(self):
         return self.args[0] if self.args else ''
 
-class StopHooks(HookError):
+class StopHooksError(HookError):
     pass
 
-class HookOkay(StopHooks):
+class OkayError(StopHooksError):
     okay = True
 
-class HookDone(StopHooks):
+class DoneError(StopHooksError):
     done = True
 
 class DenyError(HookError):

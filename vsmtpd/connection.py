@@ -193,7 +193,7 @@ class Connection(object):
         try:
             self.run_hooks('helo', line)
 
-        except error.StopHooks:
+        except error.StopHooksError:
             return
 
         except error.HookError as e:
@@ -217,7 +217,7 @@ class Connection(object):
         try:
             self.run_hooks('ehlo', line)
 
-        except error.StopHooks:
+        except error.StopHooksError:
             return
 
         except error.HookError as e:
@@ -229,13 +229,16 @@ class Connection(object):
         self._hello = 'ehlo'
         self._hello_host = line
 
+        hostname = self._config.get('helo_host') or self.local_host
+        print repr(self._config.get('helo_host'))
+
         args = []
-        if 'sizelimit' in self._config:
-            args.append('SIZE %s' % self._config.get('sizelimit'))
+        size_limit = self._config.getint('size_limit')
+        if size_limit:
+            args.append('SIZE %d' % size_limit)
 
         self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.\n' %
-            (self._config.get('me'), self.remote_host, self.remote_ip)
-            + '\n'.join(args))
+            (hostname, self.remote_host, self.remote_ip) + '\n'.join(args))
 
     @command
     def mail(self, line):
@@ -345,7 +348,7 @@ class Connection(object):
         try:
             msg = self.run_hooks('rcpt', tnx, addr)
 
-        except error.StopHooks as e:
+        except error.StopHooksError as e:
             return
 
         except error.HookError as e:
@@ -400,7 +403,7 @@ class Connection(object):
 
         buf = ''
         size = 0
-        size_limit = self._server.config.get('size_limit', 0)
+        size_limit = self._server.config.get('size_limit')
         in_header = True
         complete = False
         lines = 0
@@ -457,7 +460,7 @@ class Connection(object):
             msg = self.run_hooks('quit')
 
         except error.HookError as e:
-            if isinstance(e, error.StopHooks):
+            if isinstance(e, error.StopHooksError):
                 self._disconnect()
                 return
 
