@@ -24,7 +24,6 @@ import logging
 from types import FunctionType
 from vsmtpd.error import HookNotFoundError
 from vsmtpd.error import HookError
-from vsmtpd.error import HookExecuteError
 
 log = logging.getLogger(__name__)
 
