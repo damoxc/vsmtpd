@@ -40,6 +40,14 @@ connection_limit = 100
 
 ;ciphers =
 
+; A list of directories to search for plugins in, it is the same format
+; as the PATH environment variable.
+;
+; e.g:
+; plugin_path = /usr/local/share/vsmtpd/plugins:/usr/share/vsmtpd/plugins
+;
+;plugin_path = /usr/share/vsmtpd/plugins
+
 ; Below is where the plugins are enabled and configured. A plugin is enabled
 ; by creating a section with the plugin name prefixed with plugin:
 ;

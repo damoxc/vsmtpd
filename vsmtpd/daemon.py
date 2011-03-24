@@ -85,7 +85,8 @@ class Vsmtpd(object):
                 'suppress_ragged_eofs': None,
                 'do_handshake_on_connect': None,
                 # FIXME: Provide a default secure (SSLV3/TLSV1) cipher setup
-                'ciphers': None
+                'ciphers': None,
+                'plugin_path': '/usr/share/vsmtpd/plugins'
             }
         })
         self.config = ConfigWrapper(self._config, 'vsmtpd')
