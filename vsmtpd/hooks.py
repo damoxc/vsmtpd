@@ -20,8 +20,13 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import logging
 from types import FunctionType
 from vsmtpd.error import HookNotFoundError
+from vsmtpd.error import HookError
+from vsmtpd.error import HookExecuteError
+
+log = logging.getLogger(__name__)
 
 HOOKS = [ 
 # SMTP hooks
@@ -120,5 +125,14 @@ class HookManager(object):
         :param hook_name: The name of the hook to call
         :type hook_name: str
         """
+        log.info('dispatching hook %r', hook_name)
         for cb in self.__hooks[hook_name]:
-            cb(*args, **kwargs)
+            try:
+                cb(*args, **kwargs)
+            except HookError:
+                raise # re-raise HookErrors
+            except Exception as e:
+                log.exception(e)
+                log.error('Error calling the hook handler from the %s plugin',
+                          cb.im_class.__module__)
+                raise
