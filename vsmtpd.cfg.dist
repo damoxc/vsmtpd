@@ -15,7 +15,7 @@ port = 25
 ;size_limit = 252342362
 
 ; The name to print out when sending the greeting
-;smtp_helo_host = 
+;helo_host = 
 
 ; Limit the number of connections this server will accept
 connection_limit = 100

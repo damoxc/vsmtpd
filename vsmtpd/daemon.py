@@ -28,6 +28,7 @@ from gevent.server import StreamServer
 from optparse import OptionParser
 
 from vsmtpd.config import load_config
+from vsmtpd.config import ConfigWrapper
 from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
 
@@ -44,13 +45,13 @@ class Vsmtpd(object):
         # Load the configuration for the server
         self.load_config()
 
-        connection_limit = self.config.getint('vsmtpd', 'connection_limit')
+        connection_limit = self.config.getint('connection_limit')
         if connection_limit:
             self.pool = Pool(connection_limit)
             log.info('Limiting connections to %d', connection_limit)
 
         # Load the plugins
-        for section in self.config.sections():
+        for section in self._config.sections():
             if not section.startswith('plugin:'):
                 continue
             plugin = section.split(':', 1)[1]
@@ -67,12 +68,12 @@ class Vsmtpd(object):
         connection.run_hooks('disconnect', connection)
 
     def load_config(self):
-        self.config = load_config(self.options.config or 'vsmtpd.cfg', {
+        self._config = load_config(self.options.config or 'vsmtpd.cfg', {
             'vsmtpd': {
                 'port': 25,
                 'interface': None,
-                'size_limit': None,
-                'smtp_helo_host': None,
+                'size_limit': 0,
+                'helo_host': None,
                 'connection_limit': 100,
                 'spool_dir': '/var/spool/vsmtpd',
                 'keyfile': None,
@@ -87,6 +88,7 @@ class Vsmtpd(object):
                 'ciphers': None
             }
         })
+        self.config = ConfigWrapper(self._config, 'vsmtpd')
 
     def start(self):
         log.info('Starting server on 0.0.0.0 port 2500')
