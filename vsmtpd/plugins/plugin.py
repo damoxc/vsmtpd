@@ -30,7 +30,16 @@ from vsmtpd.error import (
     OkayError
 )
 
+vsmtpd = None
+
 class PluginBase(object):
+
+    @property
+    def vsmtpd(self):
+        global vsmtpd
+        if not vsmtpd:
+            from vsmtpd.daemon import vsmtpd
+        return vsmtpd
 
     def declined(self):
         return None
