@@ -22,8 +22,9 @@ Installation
 ------------
 The same as any python project:
 
-``python setup.py build
-python setup.py install``
+::
+	``python setup.py build``
+	``python setup.py install``
 
 
 Plugins
