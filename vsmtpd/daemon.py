@@ -67,7 +67,7 @@ class Vsmtpd(object):
         connection.run_hooks('disconnect', connection)
 
     def load_config(self):
-        self.config = load_config(options.config or 'vsmtpd.cfg', {
+        self.config = load_config(self.options.config or 'vsmtpd.cfg', {
             'vsmtpd': {
                 'port': 25,
                 'interface': None,
