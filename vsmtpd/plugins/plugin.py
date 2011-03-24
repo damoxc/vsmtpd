@@ -20,18 +20,37 @@
 #   Boston, MA    02110-1301, USA.
 #
 
-from vsmtpd.common import DECLINED, DONE, OK
 from vsmtpd.config import load_config, load_simple_config
+from vsmtpd.error import (
+    DenyError,
+    DenySoftError,
+    DenyDisconnectError,
+    DenySoftDisconnectError,
+    DoneError,
+    OkayError
+)
 
-class Plugin(object):
+class PluginBase(object):
 
     def declined(self):
-        return DECLINED
+        return None
+
+    def deny(self, message=None, disconnect=False):
+        if disconnect:
+            raise DenyDisconnectError(message)
+        else:
+            raise DenyError(message)
+
+    def deny_soft(self, message=None, disconnect=False):
+        if disconnect:
+            raise DenySoftDisconnectError(message)
+        else:
+            raise DenySoftError(message)
 
     def done(self, message=None):
-        return (DONE, message)
+        raise DoneError(message)
 
-    def config(self, name):
+    def config(self, name, defaults=None):
         """
         Loads a configuration file using SafeConfigParser and returns the
         resulting Config object.
@@ -39,7 +58,7 @@ class Plugin(object):
         :param name: The name of the configuration file
         :type name: str
         """
-        return load_config(name)
+        return load_config(name, defaults)
 
     def simple_config(self, name):
         """
@@ -51,4 +70,4 @@ class Plugin(object):
         return load_simple_config(name)
 
     def ok(self, message=None):
-        return (OK, message)
+        raise OkayError(message)
