@@ -105,6 +105,10 @@ class Connection(NoteObject):
         return self._hello_host
 
     @property
+    def hostname(self):
+        return self._config.get('helo_host') or self.local_host
+
+    @property
     def relay_client(self):
         return self._relay_client
 
@@ -191,7 +195,7 @@ class Connection(NoteObject):
             return self.send_code(503, 'But you already said HELO...')
 
         try:
-            self.run_hooks('helo', self.connection, line)
+            self.run_hooks('helo', self, line)
 
         except error.HookError as e:
             if not (e.okay or e.done):
@@ -205,8 +209,9 @@ class Connection(NoteObject):
 
         self._hello = 'helo'
         self._hello_host = line
+
         self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.' %
-            (self.config.get('me'), self.remote_host, self.remote_ip))
+            (self.hostname, self.remote_host, self.remote_ip))
 
     @command
     def ehlo(self, line):
@@ -216,7 +221,7 @@ class Connection(NoteObject):
             return self.send_code(503, 'But you already said HELO...')
 
         try:
-            self.run_hooks('ehlo', self.connectionn, line)
+            self.run_hooks('ehlo', self, line)
 
         except error.HookError as e:
             if not (e.okay or e.done):
@@ -231,7 +236,6 @@ class Connection(NoteObject):
         self._hello = 'ehlo'
         self._hello_host = line
 
-        hostname = self._config.get('helo_host') or self.local_host
 
         args = []
         size_limit = self._config.getint('size_limit')
@@ -239,7 +243,7 @@ class Connection(NoteObject):
             args.append('SIZE %d' % size_limit)
 
         self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.\n' %
-            (hostname, self.remote_host, self.remote_ip) + '\n'.join(args))
+            (self.hostname, self.remote_host, self.remote_ip) + '\n'.join(args))
 
     @command
     def mail(self, line):
@@ -471,7 +475,7 @@ class Connection(NoteObject):
 
         if not msg:
             msg = ('%s closing connection. Have a wonderful day.' % 
-                self._config.get('me'))
+                self.hostname)
 
         self.disconnect(221, msg)
 
@@ -569,7 +573,6 @@ class Connection(NoteObject):
         self._transaction = Transaction(self)
 
     def run_hooks(self, hook_name, *args, **kwargs):
-        return None
         return self._server.fire(hook_name, *args, **kwargs)
 
     def send_code(self, code, message='', *args):
