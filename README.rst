@@ -20,12 +20,11 @@ allows for a very very efficient server.
 
 Installation
 ------------
-The same as any python project:
 
-::
-	python setup.py build
-	python setup.py install
+The same as any python project::
 
+	|python setup.py build
+	|python setup.py install
 
 Plugins
 -------
