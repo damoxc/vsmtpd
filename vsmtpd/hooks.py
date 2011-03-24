@@ -100,7 +100,7 @@ class HookManager(object):
         :param callback: The hook callback to degregister
         :type callback: func
         """
-        if hook not in self.__hooks:
+        if hook_name not in self.__hooks:
             raise HookNotFoundError(hook_name)
         self.__hooks[hook_name].remove(callback)
 
@@ -113,9 +113,25 @@ class HookManager(object):
         :param callback: The hook callback function
         :type callback: func
         """
-        if hook not in self.__hooks:
+        if hook_name not in self.__hooks:
             raise HookNotFoundError(hook_name)
         self.__hooks[hook_name].append(callback)
+
+    def register_object(self, obj):
+        """
+        Scans an object for hook handlers and registers
+        them with the hook manager.
+
+        :param obj: The object to scan for hook handlers
+        :type obj: object
+        """
+        log.debug('Scanning %r for hook handlers', obj)
+        for item in dir(obj):
+            item = getattr(obj, item)
+            if not getattr(item, '_is_hook', False):
+                continue
+            hook_name = getattr(item, '_hook_name')
+            self.register_hook(hook_name, item)
 
     def dispatch_hook(self, hook_name, *args, **kwargs):
         """
