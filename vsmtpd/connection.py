@@ -462,7 +462,7 @@ class Connection(NoteObject):
         msg = ''
         
         try:
-            msg = self.run_hooks('quit')
+            msg = self.run_hooks('quit', self)
 
         except error.HookError as e:
             if e.done:
