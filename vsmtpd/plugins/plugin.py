@@ -33,6 +33,8 @@ from vsmtpd.error import (
 vsmtpd = None
 
 class PluginBase(object):
+
+    plugin_name = None
     
     @property
     def vsmtpd(self):

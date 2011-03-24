@@ -76,10 +76,13 @@ class Vsmtpd(object):
                     plugin = plugin_cls(ConfigWrapper(self._config, section))
                 else:
                     plugin = plugin_cls()
+                plugin.plugin_name = plugin_name
             except Exception as e:
                 log.fatal("Failed to initialise plugin '%s'", plugin_Name)
                 log.exception(e)
                 exit(1)
+
+            self.hook_manager.register_object(plugin)
 
     def fire(self, hook_name, *args, **kwargs):
         return self.hook_manager.dispatch_hook(hook_name, *args, **kwargs)
@@ -135,7 +138,7 @@ def main():
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)s] [%(conn_id)s] %(message)s',
+        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)-3s] [%(conn_id)s] %(message)s',
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
 
