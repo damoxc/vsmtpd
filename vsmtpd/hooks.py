@@ -40,7 +40,9 @@ HOOKS = [
     'helo',                 # after the client sends HELO
     'ehlo',                 # after the client sends EHLO
     'reset_transaction',    # after the transaction is reset
+    'mail_pre',             # after the MAIL FROM: line sent by the client is parsed
     'mail',                 # after the client sends the mail from command
+    'rcpt_pre',             # after the RCPT TO: line sent by the client is parsed
     'rcpt',                 # after the client sends a RCPT TO: command
     'data',                 # after the client sends the DATA command
     'data_post',            # after the client sent the final ".\r\n" of a 
