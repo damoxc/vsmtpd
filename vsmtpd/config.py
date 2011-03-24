@@ -177,6 +177,8 @@ def _dict_to_defaults(sections):
     for name, section in sections.iteritems():
         fp.write('[%s]\n' % name)
         for key, value in section.iteritems():
+            if value is None:
+                value = ''
             fp.write('%s = %s\n' % (key, value))
         fp.write('\n')
     fp.seek(0)
