@@ -31,6 +31,42 @@ import ConfigParser
 
 CONFIG_DIR = '/etc/vsmtpd'
 
+class ConfigWrapper(object):
+
+    def __init__(self, config, section):
+        self.__config = config
+        self.__section = section
+
+    def get(self, option):
+        return self.__config.get(self.__section, option)
+
+    def getint(self, option):
+        return self.__config.getint(self.__section, option)
+
+    def getfloat(self, option):
+        return self.__config.getfloat(self.__section, option)
+
+    def getboolean(self, option):
+        return self.__config.getboolean(self.__section, option)
+
+    def has_option(self, option):
+        return self.__config.has_option(self.__section, option)
+
+    def items(self):
+        return self.__config.items(self.__section)
+
+    def options(self):
+        return self.__config.options(self.__section)
+
+    def set(self, option, value):
+        return self.__config.set(self.__section, option, value)
+
+    def __contains__(self, item):
+        return self.has_option(item)
+
+    def __iter__(self):
+        return iter(self.__config)
+
 if sys.version_info < (2, 7):
     from UserDict import DictMixin
 
