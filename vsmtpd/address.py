@@ -46,6 +46,17 @@ class Address(NoteObject):
     def format(self):
         return str(self)
 
+    def __cmp__(self, other):
+        test = cmp(self.user, other.user)
+        if test:
+            return test
+
+        test = cmp(self.host, other.host)
+        if test:
+            return test
+
+        return cmp(self.name, other.name)
+
     def __str__(self):
         return formataddr((self.name, '%s@%s' % self.canonify))
 

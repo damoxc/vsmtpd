@@ -40,3 +40,8 @@ class AddressTestCase(TestCase):
         self.assertEqual(address.user, 'test')
         self.assertEqual(address.host, 'example.com')
         self.assertEqual(address.name, 'John Smith')
+
+    def test_address_equality(self):
+        a = Address('John Smith <test@example.com>')
+        b = Address('John Smith <test@example.com>')
+        self.assertEqual(a, b)
