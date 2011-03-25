@@ -47,6 +47,8 @@ class Transaction(NoteObject):
         memory depending on the email size of if body_filename has not
         been accessed.
         """
+        if not self._body:
+            self._body = StringIO()
         return self._body
 
     @property
@@ -114,6 +116,7 @@ class Transaction(NoteObject):
         self._sender     = None
         self._body       = None
         self._body_fn    = None
+        self._rollover   = 262144 # 256kb
 
     def add_recipient(self, recipient):
         """
@@ -135,7 +138,18 @@ class Transaction(NoteObject):
         """
         if not self._body:
             self._body = StringIO()
+
+        if (self._body.tell() + len(data)) > self._rollover:
+            self.flush()
+
         self._body.write(data)
+
+    def close(self):
+        """
+        Dispose all the resources that this transaction has opened.
+        """
+        if self._body:
+            self._body.close()
 
     def remove_recipient(self, recipient):
         """
