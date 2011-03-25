@@ -24,6 +24,8 @@ import sys
 import collections
 
 if sys.version_info < (2, 7):
+    # This class was taken from http://code.activestate.com/recipes/576693/
+    # which was found on PEP 372.
     from UserDict import DictMixin
 
     class OrderedDict(dict, DictMixin):
