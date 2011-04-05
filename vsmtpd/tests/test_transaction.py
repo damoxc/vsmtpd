@@ -39,6 +39,20 @@ class TransactionTestCase(TestCase):
         self.tnx.add_recipient(address)
         self.assertEqual(address, self.tnx.recipients[0])
 
+    def test_remove_recipient_as_string(self):
+        address = Address('test@example.com')
+        self.tnx.add_recipient(address)
+
+        self.tnx.remove_recipient('test@example.com')
+        self.assertEqual(self.tnx.recipients, [])
+
+    def test_remove_recipient_as_address(self):
+        address = Address('test@example.com')
+        self.tnx.add_recipient(address)
+
+        self.tnx.remove_recipient(address)
+        self.assertEqual(self.tnx.recipients, [])
+
     def test_body_flush(self):
         self.tnx.body_write('Subject: blah blah\r\n')
         self.tnx.body_write('From: John Smith <john@example.com>\r\n')
