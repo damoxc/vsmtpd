@@ -52,7 +52,18 @@ class PluginManager(object):
         :type plugin_name: str
         """
 
-        fp, path, description = imp.find_module(plugin_name, self.path)
+        # Rather unintuatively imp.find_module expects actual paths
+        # instead of module names, go figure.
+        name = plugin_name.replace('.', '/')
+
+        # Sadly there doesn't seem like a simple way to check if a module
+        # cannot be found due to it not existing or having a syntax/import
+        # error.
+        try:
+            fp, path, description = imp.find_module(name, self.path)
+        except ImportError:
+            raise PluginNotFoundError("Can't find a valid module")
+
         try:
             module = imp.load_module('vsmtpd.plugins.%s' % plugin_name, fp,
                                      path, description)
