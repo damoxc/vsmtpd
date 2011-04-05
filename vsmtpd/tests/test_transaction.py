@@ -52,6 +52,20 @@ class TransactionTestCase(TestCase):
         self.assertNotEqual(self.tnx._body_fn, None)
         self.assertEqual(old_tell, self.tnx.body.tell())
 
+    def test_body_flush_twice(self):
+        self.tnx.body_write('Subject: blah blah\r\n')
+        self.tnx.body_write('From: John Smith <john@example.com>\r\n')
+        self.tnx.body_write('To: Joe Bloggs <joe@example.com>\r\n')
+        self.tnx.body.write('Date: Fri, 25 Mar 2011 13:35:33 -0000\r\n')
+        self.tnx.body.write('\r\n')
+        self.tnx.body.write('This is testing writing an email\r\n')
+        self.tnx.flush()
+        self.assertNotEqual(self.tnx._body_fn, None)
+
+        filename = self.tnx._body_fn
+        self.tnx.flush()
+        self.assertEqual(self.tnx._body_fn, filename)
+
     def test_body_write(self):
         msg = """Subject: blah blah
 From: John Smith <john@example.com>
