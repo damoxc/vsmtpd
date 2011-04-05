@@ -80,15 +80,6 @@ class Transaction(NoteObject):
         return self._body.tell() if self._body else 0
 
     @property
-    def notes(self):
-        """
-        Set notes to do with the transaction. This is a piece of data that
-        you wish to attach to the transaction and read somewhere else. For
-        example you can use this to pass data between plugins.
-        """
-        return self._nodes
-
-    @property
     def recipients(self):
         """
         This returns the list of the current recipients for the mail
