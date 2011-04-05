@@ -65,7 +65,7 @@ class Transaction(NoteObject):
         """
         # We have to write the email to disk now into our spool directory
         # and update the body variable.
-        if not self._body_fn and self._body:
+        if not self._body_fn:
             self.flush()
 
         return self._body_fn
@@ -164,8 +164,9 @@ class Transaction(NoteObject):
         # Create the named temporary file to write the data to
         body = self._body
         newbody = self._body = NamedTemporaryFile(dir='/tmp', prefix='')
-        newbody.write(body.getvalue())
-        newbody.seek(body.tell(), 0)
+        if body:
+            newbody.write(body.getvalue())
+            newbody.seek(body.tell(), 0)
         self._body_fn = newbody.name
 
     def set_body_start(self):

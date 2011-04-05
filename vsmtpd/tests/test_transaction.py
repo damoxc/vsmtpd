@@ -117,5 +117,14 @@ This is testing writing an email"""
         self.assertEqual(self.tnx._header_size, self.tnx._body_start)
         self.assertEqual(self.tnx._header_size, 132)
 
+    def test_body_property(self):
+        self.assertNotEqual(self.tnx.body, None)
+
+    def test_body_filename_flush(self):
+        self.assertNotEqual(self.tnx.body_filename, None)
+
+    def test_connection_property(self):
+        self.assertEqual(self.tnx.connection, self.tnx._connection)
+
     def tearDown(self):
         self.tnx.close()
