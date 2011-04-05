@@ -176,3 +176,6 @@ class Transaction(NoteObject):
         newbody.write(body.getvalue())
         newbody.seek(body.tell(), 0)
         self._body_fn = newbody.name
+
+    def set_body_start(self):
+        self._header_size = self._body_start = self.data_size
