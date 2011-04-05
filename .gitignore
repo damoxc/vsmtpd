@@ -4,3 +4,4 @@
 *.egg-link
 __pycache__/
 vsmtpd.cfg
+.coverage
