@@ -94,7 +94,7 @@ def load_config(name, defaults=None):
     return config
 
 def load_simple_config(name):
-    path = os.path.join(CONFIG_DIR, name)
+    path = name if os.path.exists(name) else os.path.join(CONFIG_DIR, name)
     if os.path.exists(path):
         for line in open(path):
             line = line.strip()
