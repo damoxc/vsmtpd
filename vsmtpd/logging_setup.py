@@ -32,10 +32,11 @@ class ConnectionLogRecord(logging.LogRecord):
     massively concurrent environment.
     """
 
-    def __init__(self, name, level, fn, lno, msg, args, exc_info, func):
+    def __init__(self, name, level, fn, lno, msg, args, exc_info, func,
+                 connection_id):
         logging.LogRecord.__init__(self, name, level, fn, lno, msg, args,
             exc_info, func)
-        self.conn_id = log.connection_id
+        self.conn_id = connection_id
 
 class Logger(logging.Logger, object):
     """
@@ -58,7 +59,7 @@ class Logger(logging.Logger, object):
     def makeRecord(self, name, level, fn, lno, msg, args, exc_info,
                    func=None, extra=None):
         lr = ConnectionLogRecord(name, level, fn, lno, msg, args, exc_info,
-            func)
+            func, self.connection_id)
 
         if not extra:
             return lr
@@ -71,4 +72,3 @@ class Logger(logging.Logger, object):
         return lr
 
 logging.setLoggerClass(Logger)
-log = logging.getLogger(__name__)
