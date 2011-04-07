@@ -90,6 +90,10 @@ class HookManager(object):
     Manage dispatching hook calls off to the correct places.
     """
 
+    @property
+    def hooks(self):
+        return self.__hooks
+
     def __init__(self):
         self.__hooks = dict([(h, []) for h in HOOKS])
 
