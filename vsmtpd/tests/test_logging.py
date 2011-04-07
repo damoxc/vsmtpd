@@ -43,7 +43,7 @@ class LoggingTestCase(TestCase):
         log_record = log.makeRecord(__name__, logging.INFO, 
                                     'test_logging.py', 43, 
                                     'This is a test', None, None,
-                                    'test_logger_make_record', {'random': 1})
+                                    'test_logger_make_record')
 
         self.assertEqual(log_record.conn_id, 'test')
         self.assertEqual(log_record.name, __name__)
