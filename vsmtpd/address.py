@@ -30,12 +30,14 @@ class Address(NoteObject):
 
     @property
     def canonify(self):
+        """
+        Return a tuple of the user and host.
+        """
         return (self.user, self.host)
 
     def __init__(self, user, host=None, name=None):
-        name, address = parseaddr(user)
-
-        if '@' in address:
+        if '@' in user:
+            name, address        = parseaddr(user)
             self.name            = name
             self.user, self.host = address.split('@')
         else:
@@ -44,6 +46,9 @@ class Address(NoteObject):
             self.name = name
     
     def format(self):
+        """
+        Return a string representation of the address.
+        """
         return str(self)
 
     def __cmp__(self, other):
@@ -62,8 +67,7 @@ class Address(NoteObject):
 
     @staticmethod
     def parse(address):
+        """
+        The same as constructing Address with a single parameter.
+        """
         return Address(address)
-
-        if '@' not in addr:
-            raise AddressParseError("Unable to parse: '%s'" % address)
-        return Address(addr, name)

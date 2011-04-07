@@ -42,6 +42,17 @@ class AddressTestCase(TestCase):
         self.assertEqual(address.name, 'John Smith')
 
     def test_address_equality(self):
-        a = Address('John Smith <test@example.com>')
+        a = Address('test', 'example.com', 'John Smith')
         b = Address('John Smith <test@example.com>')
         self.assertEqual(a, b)
+
+        b = Address.parse('John Smith <test@example.com>')
+        self.assertEqual(a, b)
+
+    def test_address_canonify(self):
+        address = Address('John Smith <test@example.com>')
+        self.assertEqual(address.canonify, ('test', 'example.com'))
+
+    def test_address_format(self):
+        address = Address('John Smith <test@example.com>')
+        self.assertEqual(address.format(), 'John Smith <test@example.com>')
