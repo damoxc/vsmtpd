@@ -52,8 +52,7 @@ class PluginManager(object):
         :type plugin_name: str
         """
 
-        # Rather unintuatively imp.find_module expects actual paths
-        # instead of module names, go figure.
+        # imp.find_module expects actual paths instead of module names
         name = plugin_name.replace('.', '/')
 
         # Sadly there doesn't seem like a simple way to check if a module
@@ -63,6 +62,17 @@ class PluginManager(object):
             fp, path, description = imp.find_module(name, self.path)
         except ImportError:
             raise PluginNotFoundError("Can't find a valid module")
+
+        # Since we aren't using Python packages but instead pathnames we
+        # need to create placeholder modules for the plugin parents.
+        if '.' in plugin_name:
+            check_name = 'vsmtpd.plugins'
+            for part in plugin_name.split('.'):
+                check_name += '.' + part
+                if check_name in sys.modules:
+                    continue
+                holder_module = imp.new_module(check_name)
+                sys.modules[check_name] = holder_module
 
         try:
             module = imp.load_module('vsmtpd.plugins.%s' % plugin_name, fp,
