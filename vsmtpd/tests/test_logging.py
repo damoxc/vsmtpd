@@ -43,7 +43,7 @@ class LoggingTestCase(TestCase):
         log_record = log.makeRecord(__name__, logging.INFO, 
                                     'test_logging.py', 43, 
                                     'This is a test', None, None,
-                                    'test_logger_make_record')
+                                    'test_logger_make_record', {'random': 1})
 
         self.assertEqual(log_record.conn_id, 'test')
         self.assertEqual(log_record.name, __name__)
@@ -54,3 +54,13 @@ class LoggingTestCase(TestCase):
         self.assertEqual(log_record.msg, 'This is a test')
         self.assertEqual(log_record.args, None)
         self.assertEqual(log_record.exc_info, None)
+        self.assertEqual(log_record.random, 1)
+
+    def test_logger_make_record_errors(self):
+        log = logging.getLogger(__name__)
+        log.connection_id = 'test'
+
+        self.assertRaises(KeyError, log.makeRecord, __name__, logging.INFO,
+                          'test_logging.py', 43, 'This is a test', None,
+                          None, 'test_logger_make_record', {
+                              'message': 'boo'})
