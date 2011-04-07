@@ -59,14 +59,15 @@ class HookManagerTestCase(TestCase):
         self.assertEqual(len(self.manager.hooks['rcpt']), 2)
 
     def test_register_missing_hook(self):
-        @hook
-        def foo(bar):
-            pass
         self.assertRaises(HookNotFoundError, self.manager.register_hook,
-                          'foo', foo)
+                          'foo', None)
 
     def test_deregister_hook(self):
         plugin = SamplePlugin()
         self.manager.register_object(plugin)
         self.manager.deregister_hook('rcpt', plugin.foo)
         self.assertEqual(len(self.manager.hooks['rcpt']), 1)
+
+    def test_deregister_missing_hook(self):
+        self.assertRaises(HookNotFoundError, self.manager.deregister_hook,
+                          'foo', None)
