@@ -21,6 +21,7 @@
 #
 
 from vsmtpd.commands import parse
+from vsmtpd.error import DenyError
 from vsmtpd.tests.common import TestCase
 
 class CommandsTestCase(TestCase):
@@ -37,6 +38,8 @@ class CommandsTestCase(TestCase):
         mail = 'FROM:<john.smith@example.com>'
         self.assertEqual(parse('mail', mail), ('<john.smith@example.com>', []))
 
+        self.assertRaises(DenyError, parse, 'mail', 'FROM:')
+
     def test_mail_with_args_parse(self):
         mail = 'FROM:<john.smith@example.com> SIZE=512'
         self.assertEqual(parse('mail', mail), ('<john.smith@example.com>', ['SIZE=512']))
@@ -44,7 +47,11 @@ class CommandsTestCase(TestCase):
     def test_rcpt_parse(self):
         rcpt = 'TO:<john.smith@example.com>'
         self.assertEqual(parse('rcpt', rcpt), ('<john.smith@example.com>', []))
+        self.assertRaises(DenyError, parse, 'rcpt', 'TO:')
 
     def test_rcpt_with_args_parse(self):
         rcpt = 'TO:<john.smith@example.com> MAX=53'
         self.assertEqual(parse('rcpt', rcpt), ('<john.smith@example.com>', ['MAX=53']))
+
+    def test_empty_parse(self):
+        self.assertEqual(parse('help', ''), None)
