@@ -32,7 +32,7 @@ from vsmtpd.util import OrderedDict
 from vsmtpd.tests.common import TestCase
 
 CONFIG = """[test_section]
-test_var2 = 2
+test_var2 = 
 test_var1 = 1
 
 """
@@ -50,7 +50,7 @@ class ConfigTestCase(TestCase):
     def test_dict_to_defaults(self):
         self.assertEqual(_dict_to_defaults({'test_section': {
             'test_var1': 1, 
-            'test_var2': 2
+            'test_var2': None
         }}).getvalue(), CONFIG)
 
     def test_load_simple_config(self):
