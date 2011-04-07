@@ -28,6 +28,8 @@ from vsmtpd.error import (
     DoneError,
     OkayError
 )
+from vsmtpd.config import load_config
+from vsmtpd.config import load_simple_config
 from vsmtpd.plugins.plugin import PluginBase
 from vsmtpd.tests.common import TestCase
 
@@ -59,3 +61,18 @@ class PluginBaseTestCase(TestCase):
 
     def test_plugin_vsmtpd(self):
         self.assertEqual(self.plugin.vsmtpd, None)
+
+    def test_plugin_simple_config(self):
+        self.assertEqual(list(self.plugin.simple_config('rbldns')),
+            list(load_simple_config('rbldns')))
+
+    def test_plugin_config(self):
+        plugin_cfg = self.plugin.config('test', {'test': {'test1': 1}})
+        config = load_config('test', {'test': {'test1': 1}})
+
+        self.assertEqual(plugin_cfg.has_section('test'),
+            config.has_section('test'))
+        self.assertEqual(plugin_cfg.has_section('missing'),
+            config.has_section('missing'))
+        self.assertEqual(plugin_cfg.get('test', 'test1'),
+            config.get('test', 'test1'))
