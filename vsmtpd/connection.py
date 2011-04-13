@@ -398,6 +398,28 @@ class Connection(NoteObject):
         :param line: The rest of the command line
         :type line: str
         """
+        try:
+            message = self.run_hooks('data')
+        except error.HookError as e:
+
+            # A plugin handled receiving the data
+            if e.done:
+                return
+
+            message = e.message or ('Message denied temporarily' if
+                e.soft else 'Message denied')
+
+            # Handle any denials
+            if e.deny and e.soft and e.disconnect:
+                return self.disconnect(421, message)
+            elif e.deny and e.disconnect:
+                return self.disconnect(554, message)
+            elif e.deny and e.soft:
+                return self.send_code(451, message)
+            elif e.deny:
+                return self.send_code(554, message)
+
+        # Begin handling of receiving the message
         if not self.transaction.sender:
             return self.send_code(503, 'MAIL first please')
 
