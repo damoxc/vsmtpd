@@ -21,6 +21,7 @@
 #
 
 import sys
+import ctypes
 import collections
 
 if sys.version_info < (2, 7):
@@ -139,3 +140,39 @@ class NoteObject(object):
         if not self._notes:
             self._notes = {}
         return self._notes
+
+libc = ctypes.cdll.LoadLibrary('libc.so.6')
+
+def get_procname():
+    argv = ctypes.POINTER(ctypes.c_char_p)()
+    argc = ctypes.c_int()
+    ctypes.pythonapi.Py_GetArgcArgv(ctypes.byref(argc), ctypes.byref(argv))
+    return argv.contents.value
+
+def set_procname(name):
+    argv = ctypes.POINTER(ctypes.c_char_p)()
+    argc = ctypes.c_int()
+    ctypes.pythonapi.Py_GetArgcArgv(ctypes.byref(argc), ctypes.byref(argv))
+
+    new_name = ctypes.c_char_p(name)
+    libc.strncpy(argv.contents, new_name, libc.strlen(argv.contents))
+
+    # Set the processname in the process table
+    libc.prctl(15, new_name, 0, 0, 0)
+
+def set_cmdline(cmdline):
+    argv = ctypes.POINTER(ctypes.c_char_p)()
+    argc = ctypes.c_int()
+    ctypes.pythonapi.Py_GetArgcArgv(ctypes.byref(argc), ctypes.byref(argv))
+
+    cmdlen = sum([len(argv[i]) for i in xrange(0, argc.value)])
+    cmdlen += argc.value - 1 # adjust for the null separators
+
+    # add any required padding and make it a pointer
+    new_cmdline = ctypes.c_char_p(cmdline.ljust(cmdlen, '\0'))
+
+    # replace the old command line with our new one
+    libc.memcpy(argv.contents, new_cmdline, cmdlen)
+
+    # Set the processname in the process table
+    libc.prctl(15, new_cmdline, 0, 0, 0)

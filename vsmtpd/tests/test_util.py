@@ -20,6 +20,12 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import os
+import sys
+
+from vsmtpd.util import get_procname
+from vsmtpd.util import set_procname
+from vsmtpd.util import set_cmdline
 from vsmtpd.util import NoteObject
 from vsmtpd.tests.common import TestCase
 
@@ -37,3 +43,26 @@ class NoteObjectTestCase(TestCase):
         note.notes['example'] = 17
         self.assertEqual(note.notes['test'], 5)
         self.assertEqual(note.notes['example'], 17)
+
+class ProcessCmdLineTestCase(TestCase):
+
+    def setUp(self):
+        self.procname = get_procname()
+        self.cmdline = open('/proc/%d/cmdline' % os.getpid()).read()
+
+    def test_get_procname(self):
+        self.assertEqual(get_procname(), sys.executable)
+
+    def test_set_procname(self):
+        set_procname('vsmtpd: master')
+        self.assertEqual(get_procname(), 'vsmtpd: master')
+
+    def test_set_cmdline(self):
+        set_cmdline('vsmtpd: master')
+        self.assertEqual(get_procname(), 'vsmtpd: master')
+        cmdline = open('/proc/%d/cmdline' % os.getpid()).read().rstrip('\0')
+        self.assertEqual(cmdline, 'vsmtpd: master')
+
+    def tearDown(self):
+        set_cmdline(self.cmdline)
+        set_procname(self.procname)
