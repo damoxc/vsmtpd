@@ -155,7 +155,7 @@ def set_procname(name):
     ctypes.pythonapi.Py_GetArgcArgv(ctypes.byref(argc), ctypes.byref(argv))
 
     new_name = ctypes.c_char_p(name)
-    libc.strncpy(argv.contents, new_name, libc.strlen(argv.contents))
+    libc.strncpy(argv.contents, new_name, libc.strlen(argv.contents) + 1)
 
     # Set the processname in the process table
     libc.prctl(15, new_name, 0, 0, 0)
@@ -165,8 +165,8 @@ def set_cmdline(cmdline):
     argc = ctypes.c_int()
     ctypes.pythonapi.Py_GetArgcArgv(ctypes.byref(argc), ctypes.byref(argv))
 
-    cmdlen = sum([len(argv[i]) for i in xrange(0, argc.value)])
-    cmdlen += argc.value - 1 # adjust for the null separators
+    # calculate the current length of the command line
+    cmdlen = sum([len(argv[i]) for i in xrange(0, argc.value)]) + argc.value
 
     # add any required padding and make it a pointer
     new_cmdline = ctypes.c_char_p(cmdline.ljust(cmdlen, '\0'))
