@@ -35,6 +35,10 @@ class SamplePlugin(object):
     def foo(self, bar):
         pass
 
+    @hook('connect', 'rcpt')
+    def bar(self, *args):
+        pass
+
 class HookDecoratorTestCase(TestCase):
 
     @hook('rcpt')
@@ -43,11 +47,18 @@ class HookDecoratorTestCase(TestCase):
 
     def test_hook_decorator(self):
         self.assertTrue(SamplePlugin.rcpt._is_hook)
-        self.assertEqual(SamplePlugin.rcpt._hook_name, 'rcpt')
+        self.assertEqual(SamplePlugin.rcpt._hook_names, ('rcpt',))
 
     def test_hook_decorator_with_name(self):
         self.assertTrue(SamplePlugin.foo._is_hook)
-        self.assertEqual(SamplePlugin.foo._hook_name, 'rcpt')
+        self.assertEqual(SamplePlugin.foo._hook_names, ('rcpt',))
+
+    def test_hook_decorator_with_multiple_names(self):
+        self.assertTrue(SamplePlugin.bar._is_hook)
+        self.assertEqual(SamplePlugin.bar._hook_names, ('connect', 'rcpt'))
+
+    def test_hook_decorator_no_arguments(self):
+        self.assertRaises(TypeError, hook)
 
 class HookManagerTestCase(TestCase):
 

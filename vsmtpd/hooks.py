@@ -70,18 +70,24 @@ HOOKS = [
     'auth_parse'
 ]
 
-def hook(hook_name):
+def hook(*hook_names):
     """
     Specify a method has a hook handler.
     """
-    if type(hook_name) is FunctionType:
+    count = len(hook_names)
+
+    if not count:
+        raise TypeError('hook expected at least 1 argument, got %d' % count)
+
+    if type(hook_names[0]) is FunctionType:
+        hook_name = hook_names[0]
         hook_name._is_hook = True
-        hook_name._hook_name = hook_name.func_name
+        hook_name._hook_names = (hook_name.func_name,)
         return hook_name
 
     def wrapper(func):
         func._is_hook = True
-        func._hook_name = hook_name
+        func._hook_names = hook_names
         return func
     return wrapper
 
