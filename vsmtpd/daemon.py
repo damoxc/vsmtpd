@@ -32,6 +32,7 @@ from vsmtpd.config import ConfigWrapper
 from vsmtpd.connection import Connection
 from vsmtpd.hooks import HookManager
 from vsmtpd.plugins.manager import PluginManager
+from vsmtpd.util import set_cmdline
 
 log = None
 vsmtpd = None
@@ -45,6 +46,9 @@ class Vsmtpd(object):
 
         # Load the configuration for the server
         self.load_config()
+
+        # Set the process title
+        set_cmdline('vsmtpd: master')
 
         # If we positive connection limit create a Pool with that limit
         connection_limit = self.config.getint('connection_limit')
