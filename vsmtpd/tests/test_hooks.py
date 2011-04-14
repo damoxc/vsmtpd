@@ -67,7 +67,7 @@ class HookManagerTestCase(TestCase):
 
     def test_register_object(self):
         self.manager.register_object(SamplePlugin())
-        self.assertEqual(len(self.manager.hooks['rcpt']), 2)
+        self.assertEqual(len(self.manager.hooks['rcpt']), 3)
 
     def test_register_missing_hook(self):
         self.assertRaises(HookNotFoundError, self.manager.register_hook,
@@ -77,7 +77,7 @@ class HookManagerTestCase(TestCase):
         plugin = SamplePlugin()
         self.manager.register_object(plugin)
         self.manager.deregister_hook('rcpt', plugin.foo)
-        self.assertEqual(len(self.manager.hooks['rcpt']), 1)
+        self.assertEqual(len(self.manager.hooks['rcpt']), 2)
 
     def test_deregister_missing_hook(self):
         self.assertRaises(HookNotFoundError, self.manager.deregister_hook,

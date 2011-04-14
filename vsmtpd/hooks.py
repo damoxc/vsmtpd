@@ -142,8 +142,8 @@ class HookManager(object):
             item = getattr(obj, item)
             if not getattr(item, '_is_hook', False):
                 continue
-            hook_name = getattr(item, '_hook_name')
-            self.register_hook(hook_name, item)
+            for hook_name in getattr(item, '_hook_names'):
+                self.register_hook(hook_name, item)
 
     def dispatch_hook(self, hook_name, *args, **kwargs):
         """
