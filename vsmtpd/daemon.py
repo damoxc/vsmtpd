@@ -94,6 +94,7 @@ class Vsmtpd(object):
         self.config = ConfigWrapper(self._config, 'vsmtpd')
 
     def load_plugins(self):
+        log.info('Loading plugins...')
         # Load the plugins
         for section in self._config.sections():
             if not section.startswith('plugin:'):
