@@ -47,9 +47,6 @@ class Vsmtpd(object):
         # Load the configuration for the server
         self.load_config()
 
-        # Set the process title
-        set_cmdline('vsmtpd: master')
-
         # If we positive connection limit create a Pool with that limit
         connection_limit = self.config.getint('connection_limit')
         if connection_limit > 0:
@@ -62,31 +59,6 @@ class Vsmtpd(object):
         # Create the plugin manager
         plugin_path = self.config.get('plugin_path').split(':')
         self.plugin_manager = PluginManager(plugin_path)
-
-        # Load the plugins
-        for section in self._config.sections():
-            if not section.startswith('plugin:'):
-                continue
-            plugin_name = section.split(':', 1)[1]
-            try:
-                plugin_cls = self.plugin_manager.load(plugin_name)
-            except Exception as e:
-                log.fatal("Failed to load plugin '%s'", plugin_name)
-                log.exception(e)
-                exit(1)
-
-            try:
-                if self._config.options(section):
-                    plugin = plugin_cls(ConfigWrapper(self._config, section))
-                else:
-                    plugin = plugin_cls()
-                plugin.plugin_name = plugin_name
-            except Exception as e:
-                log.fatal("Failed to initialise plugin '%s'", plugin_Name)
-                log.exception(e)
-                exit(1)
-
-            self.hook_manager.register_object(plugin)
 
     def fire(self, hook_name, *args, **kwargs):
         return self.hook_manager.dispatch_hook(hook_name, *args, **kwargs)
@@ -121,7 +93,36 @@ class Vsmtpd(object):
         })
         self.config = ConfigWrapper(self._config, 'vsmtpd')
 
+    def load_plugins(self):
+        # Load the plugins
+        for section in self._config.sections():
+            if not section.startswith('plugin:'):
+                continue
+            plugin_name = section.split(':', 1)[1]
+            try:
+                plugin_cls = self.plugin_manager.load(plugin_name)
+            except Exception as e:
+                log.fatal("Failed to load plugin '%s'", plugin_name)
+                log.exception(e)
+                exit(1)
+
+            try:
+                if self._config.options(section):
+                    plugin = plugin_cls(ConfigWrapper(self._config, section))
+                else:
+                    plugin = plugin_cls()
+                plugin.plugin_name = plugin_name
+            except Exception as e:
+                log.fatal("Failed to initialise plugin '%s'", plugin_Name)
+                log.exception(e)
+                exit(1)
+
+            self.hook_manager.register_object(plugin)
+
     def start(self):
+        # Set the process title
+        set_cmdline('vsmtpd: master')
+
         log.info('Starting server on 0.0.0.0 port 2500')
         self.server = StreamServer(('0.0.0.0', 2500), self.handle,
             spawn=self.pool)
