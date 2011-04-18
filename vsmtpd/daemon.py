@@ -20,9 +20,12 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import os
+import gevent
 import logging
 import vsmtpd.logging_setup
 
+from gevent import socket
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from optparse import OptionParser
@@ -74,7 +77,8 @@ class Vsmtpd(object):
             'vsmtpd': {
                 'port': 25,
                 'interface': None,
-                'children': 0,
+                'backlog': 50,
+                'workers': 0,
                 'size_limit': 0,
                 'helo_host': None,
                 'connection_limit': 100,
@@ -122,11 +126,51 @@ class Vsmtpd(object):
             self.hook_manager.register_object(plugin)
 
     def start(self):
+        """
+        Starts the vsmtpd server in either master or worker mode.
+        """
+
+        workers = self.config.getint('workers')
+        backlog = self.config.getint('backlog')
+
+        if backlog < 1:
+            backlog = 50
+
+        if workers <= 0:
+            set_cmdline('vsmtpd: master')
+            log.info('Starting server on 0.0.0.0 port 2500')
+            self._start(('0.0.0.0', 2500), backlog)
+
+        # Open the socket for master/worker operation.
+        sock = socket.socket()
+        sock.bind(('0.0.0.0', 2500))
+        sock.listen(backlog)
+        sock.setblocking(0)
+
+        # Spawn the worker servers
+        for i in xrange(0, workers):
+            pid = os.fork()
+
+            if pid == 0:
+                set_cmdline('vsmtpd: worker')
+                log.info('Worker spawned PID %d', os.getpid())
+
+                # Call event_reinit()
+                gevent.reinit()
+
+                # Start vsmtpd
+                self._start(sock)
+
         # Set the process title
         set_cmdline('vsmtpd: master')
+        os.waitpid(-1, 0)
 
-        log.info('Starting server on 0.0.0.0 port 2500')
-        self.server = StreamServer(('0.0.0.0', 2500), self.handle,
+    def _start(self, listener, backlog=None):
+        """
+        Starts the vsmtpd server.
+        """
+
+        self.server = StreamServer(listener, self.handle, backlog=backlog,
             spawn=self.pool)
         self.server.serve_forever()
 
