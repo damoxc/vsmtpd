@@ -25,7 +25,8 @@ import os
 from vsmtpd.config import (
     _dict_to_defaults,
     load_config,
-    load_simple_config
+    load_simple_config,
+    ConfigWrapper
 )
 
 from vsmtpd.util import OrderedDict
@@ -45,11 +46,35 @@ DNSBL = [
     'rbl.mail-abuse.org'
 ]
 
+class ConfigWrapperTestCase(TestCase):
+
+    def test_config_wrapper(self):
+        path = os.path.join(os.path.dirname(__file__), 'test_config.cfg')
+        config = ConfigWrapper(load_config(path), 'vsmtpd')
+        self.assertEqual(config.get('helo_host'), 'smtp.example.com')
+        self.assertEqual(config.getint('port'), 25)
+        self.assertEqual(config.getfloat('float'), 3.123)
+        self.assertEqual(config.getboolean('ssl'), True)
+        self.assertTrue(config.has_option('backlog'))
+
+        items = [
+            ('port', '25'),
+            ('workers', '4'),
+            ('backlog', '250'),
+            ('helo_host', 'smtp.example.com'),
+            ('ssl', 'true'),
+            ('float', '3.123')
+        ]
+        options = [i[0] for i in items]
+        self.assertEqual(config.items(), items)
+        self.assertEqual(config.options(), options)
+        #self.assertEqual(list(config), options)
+
 class ConfigTestCase(TestCase):
 
     def test_dict_to_defaults(self):
         self.assertEqual(_dict_to_defaults({'test_section': {
-            'test_var1': 1, 
+            'test_var1': 1,
             'test_var2': None
         }}).getvalue(), CONFIG)
 
