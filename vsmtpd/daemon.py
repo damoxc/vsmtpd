@@ -21,7 +21,9 @@
 #
 
 import os
+import sys
 import gevent
+import signal
 import logging
 import vsmtpd.logging_setup
 
@@ -46,6 +48,7 @@ class Vsmtpd(object):
         self.options = options
         self.args = args
         self.pool = None
+        self.workers = []
 
         # Load the configuration for the server
         self.load_config()
@@ -130,27 +133,33 @@ class Vsmtpd(object):
         Starts the vsmtpd server in either master or worker mode.
         """
 
+        # Install the signal handlers
+        signal.signal(signal.SIGINT, self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
+
         workers = self.config.getint('workers')
         backlog = self.config.getint('backlog')
+
+        addr = ('0.0.0.0', 2500)
 
         if backlog < 1:
             backlog = 50
 
+        log.info('Starting server on %s port %d', *addr)
+
         if workers <= 0:
             set_cmdline('vsmtpd: master')
-            log.info('Starting server on 0.0.0.0 port 2500')
-            self._start(('0.0.0.0', 2500), backlog)
+            self._start(addr, backlog)
 
         # Open the socket for master/worker operation.
-        sock = socket.socket()
-        sock.bind(('0.0.0.0', 2500))
-        sock.listen(backlog)
-        sock.setblocking(0)
+        self.sock = socket.socket()
+        self.sock.bind(addr)
+        self.sock.listen(backlog)
+        self.sock.setblocking(0)
 
         # Spawn the worker servers
         for i in xrange(0, workers):
             pid = os.fork()
-
             if pid == 0:
                 set_cmdline('vsmtpd: worker')
                 log.info('Worker spawned PID %d', os.getpid())
@@ -159,7 +168,9 @@ class Vsmtpd(object):
                 gevent.reinit()
 
                 # Start vsmtpd
-                self._start(sock)
+                self._start(self.sock)
+            else:
+                self.workers.append(pid)
 
         # Set the process title
         set_cmdline('vsmtpd: master')
@@ -173,6 +184,19 @@ class Vsmtpd(object):
         self.server = StreamServer(listener, self.handle, backlog=backlog,
             spawn=self.pool)
         self.server.serve_forever()
+
+    def stop(self, *args):
+        """
+        Shuts down the vsmtpd server and any workers running.
+        """
+        # Shut down the server or the socket, depending on which is running
+        if self.workers:
+            self.sock.close()
+        else:
+            self.server.stop()
+
+        # Finally exit successfully
+        sys.exit()
 
 def main():
     global log, vsmtpd
@@ -200,7 +224,4 @@ def main():
     try:
         vsmtpd.start()
     except KeyboardInterrupt:
-        #from guppy import hpy
-        #h = hpy()
-        #print h.heap()
-        pass
+        vsmtpd.stop()
