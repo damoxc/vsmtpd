@@ -74,6 +74,7 @@ class Vsmtpd(object):
             'vsmtpd': {
                 'port': 25,
                 'interface': None,
+                'children': 0,
                 'size_limit': 0,
                 'helo_host': None,
                 'connection_limit': 100,

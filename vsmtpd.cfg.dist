@@ -11,6 +11,9 @@ port = 25
 ; The interface to listen on
 ;interface =
 
+; Number of workers to spawn. 0 disables master/slave mode.
+;children = 0
+
 ; The maximum amount of data to receive in bytes
 ;size_limit = 252342362
 
