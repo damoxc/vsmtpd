@@ -65,13 +65,11 @@ class ConfigWrapper(object):
         return self.__config.options(self.__section)
 
     def set(self, option, value):
+        print repr(option), repr(value)
         return self.__config.set(self.__section, option, value)
 
     def __contains__(self, item):
         return self.has_option(item)
-
-    def __iter__(self):
-        return iter(self.__config)
 
 def _dict_to_defaults(sections):
     fp = StringIO.StringIO()

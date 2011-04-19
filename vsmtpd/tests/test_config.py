@@ -68,7 +68,10 @@ class ConfigWrapperTestCase(TestCase):
         options = [i[0] for i in items]
         self.assertEqual(config.items(), items)
         self.assertEqual(config.options(), options)
-        #self.assertEqual(list(config), options)
+        self.assertTrue('port' in config)
+
+        config.set('backlog', '150')
+        self.assertEqual(config.getint('backlog'), 150)
 
 class ConfigTestCase(TestCase):
 
