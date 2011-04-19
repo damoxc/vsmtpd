@@ -128,12 +128,18 @@ class Vsmtpd(object):
 
             self.hook_manager.register_object(plugin)
 
+    def reload(self):
+        """
+        Reload the configuration.
+        """
+
     def start(self):
         """
         Starts the vsmtpd server in either master or worker mode.
         """
 
         # Install the signal handlers
+        signal.signal(signal.SIGHUP, self.reload)
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
 
@@ -189,9 +195,12 @@ class Vsmtpd(object):
         """
         Shuts down the vsmtpd server and any workers running.
         """
+
         # Shut down the server or the socket, depending on which is running
         if self.workers:
             self.sock.close()
+            for pid in self.workers:
+                os.kill(pid, 2)
         else:
             self.server.stop()
 

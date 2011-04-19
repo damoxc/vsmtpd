@@ -65,7 +65,6 @@ class ConfigWrapper(object):
         return self.__config.options(self.__section)
 
     def set(self, option, value):
-        print repr(option), repr(value)
         return self.__config.set(self.__section, option, value)
 
     def __contains__(self, item):
