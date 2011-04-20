@@ -39,34 +39,12 @@ class Plugin(PluginBase):
         connection.notes['random_fail_%'] = self.likelyhood
         self.random_fail()
 
-    @hook
-    def helo(self, *args):
-        self.random_fail()
-
-    @hook
-    def ehlo(self, *args):
-        self.random_fail()
-
-    @hook
-    def mail(self, *args):
-        self.random_fail()
-
-    @hook
-    def rcpt(self, *args):
-        self.random_fail()
-
-    @hook
-    def data(self, *args):
-        self.random_fail()
-
-    @hook
-    def data_post(self, *args):
-        self.random_fail()
-
-    def random_fail(self):
+    @hook('helo', 'ehlo', 'mail', 'rcpt', 'data', 'data_post')
+    def random_fail(self, *args):
         prob = 1 - self.likelyhood
-        log.info('to fail, random() must be more than %f', prob ** (1.0 / 6))
-        if random.random() < (prob ** (1.0 / 6)):
+        fail_limit = prob ** (1.0 / 6)
+        log.info('to fail, random() must be more than %f', fail_limit)
+        if random.random() < fail_limit:
             return
 
-        self.deny_soft('random failure', disconnect=random.randint(0, 5) < 2)
+        self.deny_soft('Random failure', disconnect=random.randint(0, 5) < 2)
