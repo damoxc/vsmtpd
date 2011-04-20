@@ -433,12 +433,12 @@ class Connection(NoteObject):
 
         buf = ''
         size = 0
-        size_limit = self._server.config.get('size_limit')
+        size_limit = self.config.getint('size_limit')
         in_header = True
         complete = False
         lines = 0
 
-        log.debug('size_limit: %d / size: %d', size_limit, size)
+        log.debug('size: %d / %d', size, size_limit)
         
         line = self.get_line()
         while line:
@@ -472,7 +472,7 @@ class Connection(NoteObject):
                 header = Header(buf)
                 buf = ''
 
-            log.debug('size_limit: %d / size: %d', size_limit, size)
+            log.debug('size: %d / %d', size, size_limit)
             
             line = self.get_line()
 
