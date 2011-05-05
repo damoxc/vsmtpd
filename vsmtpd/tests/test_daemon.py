@@ -20,6 +20,7 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import os
 import logging
 import collections
 import vsmtpd.daemon
@@ -37,6 +38,14 @@ class DaemonTestCase(TestCase):
     def test_daemon_creation(self):
         options = Options(None, None, 2500)
         vsmtpd = Vsmtpd(options, [])
-        self.assertEqual(vsmtpd.options.port, 2500)
+        self.assertEqual(vsmtpd.options.port, options.port)
         self.assertNotEqual(vsmtpd.hook_manager, None)
         self.assertNotEqual(vsmtpd.plugin_manager, None)
+
+    def test_daemon_load_plugins(self):
+        options = Options(None, None, 2500)
+        vsmtpd = Vsmtpd(options, [])
+        vsmtpd.plugin_manager.path.append(os.path.join(os.path.dirname(__file__), 'plugins'))
+        vsmtpd._config.add_section('plugin:simple_valid_plugin')
+        vsmtpd._config.add_section('plugin:queue.simple_valid_plugin')
+        vsmtpd.load_plugins()
