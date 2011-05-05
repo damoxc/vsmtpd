@@ -73,7 +73,7 @@ class Vsmtpd(object):
         connection = Connection(self, socket, address)
         connection.run_hooks('pre_connection', connection)
         connection.accept()
-        connection.run_hooks('disconnect', connection)
+        connection.run_hooks('post_connection', connection)
 
     def load_config(self):
         self._config = load_config(self.options.config or 'vsmtpd.cfg', {
@@ -139,9 +139,9 @@ class Vsmtpd(object):
         """
 
         # Install the signal handlers
+        signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGHUP, self.reload)
         signal.signal(signal.SIGINT, self.stop)
-        signal.signal(signal.SIGTERM, self.stop)
 
         workers = self.config.getint('workers')
         backlog = self.config.getint('backlog')
@@ -165,21 +165,12 @@ class Vsmtpd(object):
 
         # Spawn the worker servers
         for i in xrange(0, workers):
-            pid = os.fork()
-            if pid == 0:
-                set_cmdline('vsmtpd: worker')
-                log.info('Worker spawned PID %d', os.getpid())
-
-                # Call event_reinit()
-                gevent.reinit()
-
-                # Start vsmtpd
-                self._start(self.sock)
-            else:
-                self.workers.append(pid)
+            self._start_slave()
 
         # Set the process title
         set_cmdline('vsmtpd: master')
+
+        # Wait for the children to die
         os.waitpid(-1, 0)
 
     def _start(self, listener, backlog=None):
@@ -191,11 +182,29 @@ class Vsmtpd(object):
             spawn=self.pool)
         self.server.serve_forever()
 
+    def _start_slave(self):
+        """
+        Starts a new slave worker process.
+        """
+        pid = os.fork()
+        if pid == 0:
+            # Set up the command line and logger id
+            set_cmdline('vsmtpd: worker')
+            log.connection_id = 'worker'
+
+            # Call event_reinit()
+            gevent.reinit()
+
+            # Start vsmtpd
+            self._start(self.sock)
+        else:
+            log.info('Worker spawned PID %d', pid)
+            self.workers.append(pid)
+
     def stop(self, *args):
         """
         Shuts down the vsmtpd server and any workers running.
         """
-
         # Shut down the server or the socket, depending on which is running
         if self.workers:
             self.sock.close()
@@ -215,13 +224,13 @@ def main():
         default=None, help='the configuration file to use')
     parser.add_option('-l', '--listen', dest='listen',  action='append',
         help='listen on this address')
-    parser.add_option('-p', '--port', dest='port', type='int', default=25,
+    parser.add_option('-p', '--port', dest='port', type='int', default=None,
         help='set the default port to listen on')
     (options, args) = parser.parse_args()
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)-3s] [%(conn_id)s] %(message)s',
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
@@ -230,6 +239,7 @@ def main():
     log.connection_id = 'master'
 
     vsmtpd = Vsmtpd(options, args)
+    vsmtpd.load_plugins()
     try:
         vsmtpd.start()
     except KeyboardInterrupt:

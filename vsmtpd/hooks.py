@@ -27,7 +27,7 @@ from vsmtpd.error import HookError
 
 log = logging.getLogger(__name__)
 
-HOOKS = [ 
+HOOKS = [
 # SMTP hooks
     'pre_connection',       # after the connection is accepted
     'connect',              # at the start of a connection before the
@@ -45,7 +45,7 @@ HOOKS = [
     'rcpt_pre',             # after the RCPT TO: line sent by the client is parsed
     'rcpt',                 # after the client sends a RCPT TO: command
     'data',                 # after the client sends the DATA command
-    'data_post',            # after the client sent the final ".\r\n" of a 
+    'data_post',            # after the client sent the final ".\r\n" of a
                             # message.
     'queue_pre',            # prior to the message being queued
     'queue',                # used to queue the message
@@ -92,7 +92,7 @@ def hook(*hook_names):
     return wrapper
 
 class HookManager(object):
-    """ 
+    """
     Manage dispatching hook calls off to the correct places.
     """
 
@@ -119,7 +119,7 @@ class HookManager(object):
     def register_hook(self, hook_name, callback):
         """
         Register a hook listener with the hook manager.
-        
+
         :param hook_name: The name of the hook to listen for
         :type hook_name: str
         :param callback: The hook callback function
