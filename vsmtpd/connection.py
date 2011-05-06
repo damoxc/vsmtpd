@@ -117,10 +117,6 @@ class Connection(NoteObject):
         return self._config
 
     @property
-    def notes(self):
-        return self._notes
-
-    @property
     def transaction(self):
         return self._transaction
 
@@ -163,7 +159,7 @@ class Connection(NoteObject):
             line = self.get_line()
             if not line:
                 break
-            
+
             parts = line.strip().split(None, 1)
 
             if not parts:
@@ -256,7 +252,7 @@ class Connection(NoteObject):
 
         if not self.hello:
             return self.send_code(503, "Manners? You haven't said hello...")
-        
+
         self.reset_transaction()
         log.info('full from_parameter: %s', line)
 
@@ -325,7 +321,7 @@ class Connection(NoteObject):
 
         if not self.transaction.sender:
             return self.send_code(503, 'Use MAIL before RCPT')
-        
+
         log.info('full to_parameter: %s', line)
 
         try:
@@ -366,7 +362,7 @@ class Connection(NoteObject):
             return
         else:
             #if not msg:
-            #    return self.send_code(450, 
+            #    return self.send_code(450,
             #        'No plugin decided if relaying is allowed')
 
             self.send_code(250, '%s, recipient ok', addr)
@@ -439,7 +435,7 @@ class Connection(NoteObject):
         lines = 0
 
         log.debug('size: %d / %d', size, size_limit)
-        
+
         line = self.get_line()
         while line:
             # Check to see if it is the last line
@@ -473,7 +469,7 @@ class Connection(NoteObject):
                 buf = ''
 
             log.debug('size: %d / %d', size, size_limit)
-            
+
             line = self.get_line()
 
         if not complete:
@@ -485,7 +481,7 @@ class Connection(NoteObject):
     @command
     def quit(self, line):
         msg = ''
-        
+
         try:
             msg = self.run_hooks('quit', self)
 
@@ -499,7 +495,7 @@ class Connection(NoteObject):
                 msg = ''
 
         if not msg:
-            msg = ('%s closing connection. Have a wonderful day.' % 
+            msg = ('%s closing connection. Have a wonderful day.' %
                 self.hostname)
 
         self.disconnect(221, msg)
