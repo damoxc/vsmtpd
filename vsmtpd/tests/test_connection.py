@@ -20,10 +20,13 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+from gevent import socket
 from cStringIO import StringIO
 from vsmtpd.connection import command
 from vsmtpd.connection import Connection
 from vsmtpd.tests.common import TestCase
+
+localhost = socket.getfqdn('127.0.0.1')
 
 class Socket(object):
 
@@ -54,10 +57,10 @@ class ConnectionTestCase(TestCase):
     def test_connection_creation(self):
         connection = self.connection
         self.assertEqual(connection.local_ip, '127.0.0.1')
-        self.assertEqual(connection.local_host, 'localhost.localdomain')
+        self.assertEqual(connection.local_host, localhost)
         self.assertEqual(connection.local_port, 25)
         self.assertEqual(connection.remote_ip, '127.0.0.1')
-        self.assertEqual(connection.remote_host, 'localhost.localdomain')
+        self.assertEqual(connection.remote_host, localhost)
         self.assertEqual(connection.remote_port, 48765)
         self.assertEqual(connection.transaction, None)
 
