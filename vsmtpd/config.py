@@ -21,10 +21,7 @@
 #
 
 import os
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
+import cStringIO as StringIO
 import ConfigParser
 
 from vsmtpd.util import OrderedDict
