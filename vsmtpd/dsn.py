@@ -119,11 +119,11 @@ def _dsn(return_, reason, default, subject, detail):
     if not reason:
         try:
             msg = RFC1893[subject][detail]
-        except KeyError:
+        except IndexError:
             detail = 0
             try:
                 msg = RFC1893[subject][detail]
-            except KeyError:
+            except IndexError:
                 subject = 0
                 msg = RFC1893[subject][detail]
     else:
