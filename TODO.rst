@@ -1,6 +1,7 @@
 TODO
 ====
 
+* Abstract the communications layer away from the command handling logic.
 * Convert SMTP errors to Python exceptions, remove the sending of
   codes from the command handlers to the command dispatcher so its
   easier to make sure that the client isn't left hanging.
