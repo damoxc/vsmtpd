@@ -1,0 +1,22 @@
+# vsmtpd - simple filtering SMTP server
+#
+# vsmtpd is a smtp server built using gevent & python based on qpsmtpd
+# designed to be used to filter spam in front of a MTA.
+#
+
+description "vsmtpd mail server"
+
+start on filesystem
+stop on runlevel S
+
+respawn
+respawn limit 10 5
+
+pre-start script
+	test -x /usr/bin/vsmtpd || { stop; exit 0; }
+
+	mkdir -p -m0755 /var/run/vsmtpd
+	chown vsmtp:root /var/run/vsmtpd
+end script
+
+exec /usr/bin/vsmtpd
