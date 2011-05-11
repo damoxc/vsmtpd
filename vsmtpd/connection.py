@@ -166,13 +166,13 @@ class Connection(NoteObject):
                 self.send_syntax_error()
                 continue
 
+            # Dispatch the line into the server
             try:
                 command = self._commands.get(parts[0].lower())
                 if not command:
-                    self.unknown(*parts)
-                    continue
-
-                command(parts[1] if parts[1:] else '')
+                    response = self.unknown(*parts)
+                else:
+                    response = command(parts[1] if parts[1:] else '')
 
             except Exception as e:
                 log.exception(e)
@@ -180,6 +180,14 @@ class Connection(NoteObject):
                     self.disconnect(451, 'Internal error - try again later')
                 finally:
                     break
+
+            # Handle the response from the command
+            try:
+                code, msg, disconnect = response
+
+            except TypeError:
+                self.disconnect(451, 'Internal error - try again later')
+                break
 
         self._disconnect()
 
@@ -500,9 +508,9 @@ class Connection(NoteObject):
 
         self.disconnect(221, msg)
 
-    def unknown(self, *parts):
+    def unknown(self, command, parts):
         try:
-            self.run_hooks('unknown', self._transaction, *parts)
+            self.run_hooks('unknown', self._transaction, command, *parts)
         except error.DenyDisconnectError as e:
             self.disconnect(521, e.message)
         except error.DenyError as e:
