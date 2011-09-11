@@ -21,6 +21,7 @@
 #
 
 import time
+import errno
 import gevent
 import random
 import hashlib
@@ -184,10 +185,27 @@ class Connection(NoteObject):
             # Handle the response from the command
             try:
                 code, msg, disconnect = response
+            except (TypeError, ValueError):
+                disconnect = False
+                try:
+                    code, msg = response
+                except (TypeError, ValueError):
+                    try:
+                        code = int(response)
+                    except (TypeError, ValueError):
+                        log.error('Incorrect response from command: %r',
+                                  response)
+                        code = 451
+                        msg = 'Internal error - try again later'
+                        break
 
-            except TypeError:
-                self.disconnect(451, 'Internal error - try again later')
-                break
+            if disconnect:
+                try:
+                    self.disconnect(code, msg)
+                finally:
+                    break
+            else:
+                self.send_code(code, msg)
 
         self._disconnect()
 
@@ -196,17 +214,14 @@ class Connection(NoteObject):
         msg = self.run_hooks('helo_parse', line)
 
         if self.hello:
-            return self.send_code(503, 'But you already said HELO...')
+            return 503, 'But you already said HELO...'
 
         try:
             self.run_hooks('helo', self, line)
 
         except error.HookError as e:
             if not (e.okay or e.done):
-                self.send_code(450 if e.soft else 550, e.message)
-                if e.disconnect:
-                    self._disconnect()
-                return
+                return 450 if e.soft else 550, e.message, e.disconnect
 
             if not e.okay:
                 return
@@ -214,25 +229,22 @@ class Connection(NoteObject):
         self._hello = 'helo'
         self._hello_host = line
 
-        self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.' %
-            (self.hostname, self.remote_host, self.remote_ip))
+        return (250, '%s Hi %s [%s]; I am so happy to meet you.' % (
+                self.hostname, self.remote_host, self.remote_ip))
 
     @command
     def ehlo(self, line):
         msg = self.run_hooks('ehlo_parse', line)
 
         if self.hello:
-            return self.send_code(503, 'But you already said HELO...')
+            return 503, 'But you already said HELO...'
 
         try:
             self.run_hooks('ehlo', self, line)
 
         except error.HookError as e:
             if not (e.okay or e.done):
-                self.send_code(450 if e.soft else 550, e.message)
-                if e.disconnect:
-                    self._disconnect()
-                return
+                return 450 if e.soft else 550, e.message, e.disconnect
 
             if not e.okay:
                 return
@@ -246,8 +258,9 @@ class Connection(NoteObject):
         if size_limit:
             args.append('SIZE %d' % size_limit)
 
-        self.send_code(250, '%s Hi %s [%s]; I am so happy to meet you.\n' %
-            (self.hostname, self.remote_host, self.remote_ip) + '\n'.join(args))
+        return (250, '%s Hi %s [%s]; I am so happy to meet you.\n' % (
+                self.hostname, self.remote_host, self.remote_ip) +
+                '\n'.join(args))
 
     @command
     def mail(self, line):
@@ -259,7 +272,7 @@ class Connection(NoteObject):
         """
 
         if not self.hello:
-            return self.send_code(503, "Manners? You haven't said hello...")
+            return 503, "Manners? You haven't said hello..."
 
         self.reset_transaction()
         log.info('full from_parameter: %s', line)
@@ -278,8 +291,7 @@ class Connection(NoteObject):
         try:
             addr, _params = parse_command('mail', line)
         except error.HookError as e:
-            self.send_code(501, e.message or 'Syntax error in command')
-            return
+            return 501, e.message or 'Syntax error in command'
 
         params = {}
         for param in _params:
@@ -304,15 +316,12 @@ class Connection(NoteObject):
         try:
             msg = self.run_hooks('mail', tnx, addr, params)
         except error.HookError as e:
-            self.send_code(450 if e.soft else 550, e.message)
-            if e.disconnect:
-                self._disconnect()
-            return
+            return 450 if e.soft else 550, e.message, e.disconnect
 
         log.info('getting from from %s', addr)
-        self.send_code(250,
-            '%s sender OK - how exciting to get mail from you!', addr)
         tnx.sender = addr
+        return (250,
+                '%s sender OK - how exciting to get mail from you!' % addr)
 
     @command
     def rcpt(self, line):
@@ -324,19 +333,15 @@ class Connection(NoteObject):
         :type line: str
         """
 
-        if not self.transaction:
-            return self.send_code(503, 'Use MAIL before RCPT')
-
-        if not self.transaction.sender:
-            return self.send_code(503, 'Use MAIL before RCPT')
+        if not self.transaction and self.transaction.sender:
+            return 503, 'Use MAIL before RCPT'
 
         log.info('full to_parameter: %s', line)
 
         try:
             addr, _params = parse_command('rcpt', line)
         except error.HookError as e:
-            self.send_code(501, e.message or 'Syntax error in command')
-            return
+            return 501, e.message or 'Syntax error in command'
 
         #msg = self.run_hooks('rcpt_parse', line)
 
@@ -364,17 +369,16 @@ class Connection(NoteObject):
             return
 
         except error.HookError as e:
-            self.send_code(450 if e.soft else 550, e.message or 'relaying denied')
-            if e.disconnect:
-                self._disconnect()
-            return
+            return (450 if e.soft else 550,
+                    e.message or 'relaying denied',
+                    e.disconnect)
         else:
             #if not msg:
             #    return self.send_code(450,
             #        'No plugin decided if relaying is allowed')
 
-            self.send_code(250, '%s, recipient ok', addr)
             self.transaction.add_recipient(addr)
+            return 250, '%s, recipient ok' % addr
 
     @command
     def vrfy(self, line):
@@ -384,15 +388,16 @@ class Connection(NoteObject):
             self.send_code(554, e.message or 'Access Denied')
             self.reset_transaction()
         else:
-            if not message:
-                return self.send_code(252,
-                    "Just try sending a mail and we'll see how it turns out...")
-            self.send_code(250, 'User OK' if message == True else message)
+            if message:
+                return 250, 'User OK' if message == True else message
+
+            return (252,
+                "Just try sending a mail and we'll see how it turns out...")
 
     @command
     def rset(self, line):
         self.reset_transaction()
-        self.send_code(250, 'OK')
+        return 250, 'OK'
 
     @command
     def data(self, line):
@@ -415,20 +420,20 @@ class Connection(NoteObject):
 
             # Handle any denials
             if e.deny and e.soft and e.disconnect:
-                return self.disconnect(421, message)
+                return 421, message, True
             elif e.deny and e.disconnect:
-                return self.disconnect(554, message)
+                return 554, message, True
             elif e.deny and e.soft:
-                return self.send_code(451, message)
+                return 451, message
             elif e.deny:
-                return self.send_code(554, message)
+                return 554, message
 
         # Begin handling of receiving the message
         if not self.transaction.sender:
-            return self.send_code(503, 'MAIL first please')
+            return 503, 'MAIL first please'
 
         if not self.transaction.recipients:
-            return self.send_code(503, 'RCPT first please')
+            return 503, 'RCPT first please'
 
         self.send_code(354, 'go ahead')
 
@@ -456,8 +461,8 @@ class Connection(NoteObject):
             # Reject messages that have either bare LF or CR. Thanks to
             # qpsmtpd for this tip.
             if line == '.\n' or line == '.\r':
-                return self.disconnect(421,
-                    'See http://smtpd.develooper.com/barelf.html')
+                return (421,
+                    'See http://smtpd.develooper.com/barelf.html', True)
 
             # Increase the data size of this email
             size += len(line)
@@ -465,10 +470,13 @@ class Connection(NoteObject):
             # Check to make sure that no naughty clients ignored our size
             # advertisement at the beginning.
             if size_limit and size >= size_limit:
-                self.send_code(552, 'Message too big!');
                 self.reset_transaction()
-                return
+                return 552, 'Message too big!'
 
+            # Write the email data out to the spool
+            self.transaction.body_write(line)
+
+            # Convert headers
             if in_header:
                 buf += line
                 if line.startswith(' '):
@@ -480,11 +488,12 @@ class Connection(NoteObject):
 
             line = self.get_line()
 
+        # Connection is probably dead at this point
         if not complete:
-            self.send_code(451, 'Incomplete DATA')
-            return self.reset_transaction()
+            self.reset_transaction()
+            return 451, 'Incomplete DATA'
 
-        self.send_code(451, 'Not implemented yet.')
+        return 451, 'Not implemented yet.'
 
     @command
     def quit(self, line):
@@ -506,21 +515,18 @@ class Connection(NoteObject):
             msg = ('%s closing connection. Have a wonderful day.' %
                 self.hostname)
 
-        self.disconnect(221, msg)
+        return 221, msg, True
 
     def unknown(self, command, parts):
         try:
             self.run_hooks('unknown', self._transaction, command, *parts)
         except error.DenyDisconnectError as e:
-            self.disconnect(521, e.message)
+            return 521, e.message, True
         except error.DenyError as e:
-            self.send_code(500, e.message)
+            return 500, e.message, True
         except error.HookError as e:
             if not e.done:
-                self.send_code(500, 'Unrecognized command')
-
-    def respond_UNKNOWN(self, transaction, method, rest):
-        self.send_code(500, 'Command not implemented')
+                return 500, 'Unrecognized command'
 
     def disconnect(self, code, message=''):
         """
@@ -532,7 +538,6 @@ class Connection(NoteObject):
         :keyword message: The message to send the client
         :type message: str
         """
-
         self.send_code(code, message)
         self._disconnect()
 
@@ -548,10 +553,9 @@ class Connection(NoteObject):
             self._socket.shutdown(socket.SHUT_RDWR)
             self._socket.close()
         except socket.error as e:
-            if e.errno == 107:
-                pass
-            else:
+            if e.errno != errno.ENOTCONN:
                 raise
+
         # Only set connected to False if the socket has been shutdown
         # correctly.
         self._connected = False
