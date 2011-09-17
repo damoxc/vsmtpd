@@ -22,9 +22,23 @@
 
 from cStringIO import StringIO
 from email.feedparser import FeedParser
+from email.message import Message as _Message, SEMISPACE
 from tempfile import NamedTemporaryFile
 from vsmtpd.address import Address
 from vsmtpd.util import NoteObject
+
+class Message(_Message):
+
+    def insert_header(self, _pos, _name, _value, **_params):
+        parts = []
+        for k, v in _params.items():
+            if v is None:
+                parts.append(k.replace('_', '-'))
+            else:
+                parts.append(_formatparam(k.replace('_', '-'), v))
+        if _value is not None:
+            parts.insert(0, _value)
+        self._headers.insert(_pos, (_name, SEMISPACE.join(parts)))
 
 class Spool(object):
     """
@@ -38,6 +52,10 @@ class Spool(object):
         return self._body_start
 
     @property
+    def headers(self):
+        return self._headers
+
+    @property
     def name(self):
         return self._filename
 
@@ -45,6 +63,7 @@ class Spool(object):
         self._body_start = 0
         self._filename = None
         self._fp       = None
+        self._headers  = None
         self._parser   = None
         self._rollover = 262144 # 256kb
 
@@ -56,7 +75,8 @@ class Spool(object):
         Close off the parser and return the headers.
         """
         self._body_start = self._fp.tell()
-        return self._parser.close()
+        self._headers = self._parser.close()
+        return self._headers
 
     def flush(self):
         """
@@ -85,7 +105,7 @@ class Spool(object):
         """
         if not self._fp:
             self._fp = StringIO()
-            self._parser = FeedParser()
+            self._parser = FeedParser(Message)
 
         if (self._fp.tell() + len(data)) > self._rollover:
             self.flush()
@@ -153,7 +173,7 @@ class Transaction(NoteObject):
         Create an email.message.Message object that contains the contents
         of the messages headers.
         """
-        return self._headers
+        return self.body.headers
 
     @property
     def recipients(self):
@@ -183,7 +203,6 @@ class Transaction(NoteObject):
         self._sender     = None
         self._body       = None
         self._body_fn    = None
-        self._headers    = None
         self._header_size = 0
 
     def add_recipient(self, recipient):
@@ -209,7 +228,7 @@ class Transaction(NoteObject):
         Mark the end of the messages headers and the beginning of the
         body.
         """
-        self._headers = self.body.end_headers()
+        return self.body.end_headers()
 
     def flush(self):
         """
