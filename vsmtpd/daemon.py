@@ -207,9 +207,10 @@ class Vsmtpd(object):
         """
         # Shut down the server or the socket, depending on which is running
         if self.workers:
+            self.sock.shutdown(socket.SHUT_RDWR)
             self.sock.close()
             for pid in self.workers:
-                os.kill(pid, 2)
+                os.kill(pid, signal.SIGTERM)
         else:
             self.server.stop()
 
