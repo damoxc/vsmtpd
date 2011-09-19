@@ -155,7 +155,9 @@ class HookManager(object):
         log.info('dispatching hook %r', hook_name)
         for cb in self.__hooks[hook_name]:
             try:
-                cb(*args, **kwargs)
+                result = cb(*args, **kwargs)
+                if result:
+                    return result
             except HookError:
                 raise # re-raise HookErrors
             except Exception as e:
