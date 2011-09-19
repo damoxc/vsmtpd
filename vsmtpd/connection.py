@@ -29,6 +29,7 @@ import logging
 
 from email.message import Message
 from email.header import Header
+from email.utils import formatdate
 
 from gevent import socket
 from gevent import Timeout
@@ -421,12 +422,10 @@ class Connection(NoteObject):
             # Handle any denials
             if e.deny and e.soft and e.disconnect:
                 return 421, message, True
-            elif e.deny and e.disconnect:
-                return 554, message, True
             elif e.deny and e.soft:
                 return 451, message
             elif e.deny:
-                return 554, message
+                return 554, message, e.disconnect
 
         # Begin handling of receiving the message
         if not self.transaction.sender:
@@ -446,6 +445,8 @@ class Connection(NoteObject):
         in_header = True
         complete = False
         lines = 0
+
+        body = self.transaction.body
 
         log.debug('size: %d / %d', size, size_limit)
 
@@ -474,15 +475,12 @@ class Connection(NoteObject):
                 return 552, 'Message too big!'
 
             # Write the email data out to the spool
-            self.transaction.body_write(line)
+            body.write(line)
 
-            # Convert headers
-            if in_header:
-                buf += line
-                if line.startswith(' '):
-                    continue
-                header = Header(buf)
-                buf = ''
+            # End the headers
+            if in_header and line == '\r\n':
+                in_header = False
+                body.end_headers()
 
             log.debug('size: %d / %d', size, size_limit)
 
@@ -493,7 +491,68 @@ class Connection(NoteObject):
             self.reset_transaction()
             return 451, 'Incomplete DATA'
 
-        return 451, 'Not implemented yet.'
+
+        body.headers.insert_header(0, 'Received', self.received_line())
+
+        try:
+            self.run_hooks('data_post', self._transaction)
+        except error.HookError as e:
+            if e.done:
+                return
+
+            if e.soft:
+                code = 452
+                message = 'Message denied temporarily'
+            else:
+                code = 552
+                message = 'Message denied'
+
+            if not e.disconnect:
+                self.reset_transasction()
+
+            return code, message, e.disconnect
+
+        return self.queue(self._transaction)
+
+    def queue(self, transaction):
+        """
+        Handle the queuing of a message
+
+        :param transaction: The transaction to queue
+        :type transaction: :class:`vsmtpd.transaction.Transction`
+        """
+
+        try:
+            self.run_hooks('queue_pre', self._transaction)
+        except error.HookError as e:
+            if e.done:
+                return
+
+        try:
+            msg = self.run_hooks('queue', self._transaction)
+        except error.HookError as e:
+            if e.done:
+                return
+
+            if e.deny:
+                code = 552
+                message = e.message or 'Message denied'
+            elif e.denysoft:
+                code = 452
+                message = e.message or 'Message denied temporarily'
+            else:
+                code = 451
+
+        if not msg:
+            return 451, 'Queuing declined or disabled; try again later'
+
+        self.send_code(250, 'Queued' if msg is True else msg)
+
+        try:
+            self.run_hooks('queue_post', self._transaction)
+        except error.HookError as e:
+            if e.done:
+                return
 
     @command
     def quit(self, line):
@@ -601,14 +660,32 @@ class Connection(NoteObject):
         gevent.getcurrent().kill(block=True)
 
     def reset_transaction(self):
+        """
+        Reset the message transaction and create a new one.
+        """
         if self._transaction:
             self.run_hooks('reset_transaction')
         self._transaction = Transaction(self)
+
+    def received_line(self):
+        smtp = 'ESMTP' if self.hello == 'ehlo' else 'SMTP'
+        return ('from %s (HELO %s) (%s)\n\tby %s (vsmtpd/0.1) with %s; %s' %
+            (self.remote_host, self.hello_host, self.remote_ip,
+            self.hostname, smtp, formatdate()))
 
     def run_hooks(self, hook_name, *args, **kwargs):
         return self._server.fire(hook_name, *args, **kwargs)
 
     def send_code(self, code, message='', *args):
+        """
+        Send a response back to the SMTP client.
+
+        :param code: The response code to send
+        :type code: int
+        :keyword message: The message to send back
+        :type message: str
+        :param *args: format parameters
+        """
         if message:
             message = message % args
         lines = message.splitlines()
@@ -618,14 +695,27 @@ class Connection(NoteObject):
         self.send_line('%3.3d %s' % (code, lastline and lastline[0] or ''))
 
     def send_line(self, line):
+        """
+        Send a line back to the SMTP client.
+
+        :param line: The line to send back to the client
+        :type line: str
+        """
         self._file.write(line + '\r\n')
         self._file.flush()
         log.info(line)
 
     def send_syntax_error(self):
+        """
+        Helper method for sending syntax errors
+        """
         self.send_code(500, 'Error: bad syntax')
 
     def timeout(self):
+        """
+        Let the client know that they have exceeded their timeout and
+        disconnect them.
+        """
         log.info('Client exceeded timeout, disconnecting')
         self.disconnect(421,
             'Connection timeout, try talking faster next time.')
