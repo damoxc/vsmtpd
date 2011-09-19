@@ -70,6 +70,9 @@ class Spool(object):
     def __getattr__(self, key):
         return getattr(self._fp, key)
 
+    def __iter__(self):
+        return iter(self._fp)
+
     def end_headers(self):
         """
         Close off the parser and return the headers.
