@@ -122,7 +122,7 @@ class Vsmtpd(object):
                     plugin = plugin_cls()
                 plugin.plugin_name = plugin_name
             except Exception as e:
-                log.fatal("Failed to initialise plugin '%s'", plugin_Name)
+                log.fatal("Failed to initialise plugin '%s'", plugin_name)
                 log.exception(e)
                 exit(1)
 
