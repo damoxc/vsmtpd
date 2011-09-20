@@ -64,31 +64,31 @@ class TransactionTestCase(TestCase):
         self.assertEqual(self.tnx.sender, address)
 
     def test_body_flush(self):
-        self.tnx.body_write('Subject: blah blah\r\n')
-        self.tnx.body_write('From: John Smith <john@example.com>\r\n')
-        self.tnx.body_write('To: Joe Bloggs <joe@example.com>\r\n')
+        self.tnx.body.write('Subject: blah blah\r\n')
+        self.tnx.body.write('From: John Smith <john@example.com>\r\n')
+        self.tnx.body.write('To: Joe Bloggs <joe@example.com>\r\n')
         self.tnx.body.write('Date: Fri, 25 Mar 2011 13:35:33 -0000\r\n')
         self.tnx.body.write('\r\n')
         self.tnx.body.write('This is testing writing an email\r\n')
         old_tell = self.tnx.body.tell()
 
         self.tnx.flush()
-        self.assertNotEqual(self.tnx._body_fn, None)
+        self.assertNotEqual(self.tnx.body_filename, None)
         self.assertEqual(old_tell, self.tnx.body.tell())
 
     def test_body_flush_twice(self):
-        self.tnx.body_write('Subject: blah blah\r\n')
-        self.tnx.body_write('From: John Smith <john@example.com>\r\n')
-        self.tnx.body_write('To: Joe Bloggs <joe@example.com>\r\n')
+        self.tnx.body.write('Subject: blah blah\r\n')
+        self.tnx.body.write('From: John Smith <john@example.com>\r\n')
+        self.tnx.body.write('To: Joe Bloggs <joe@example.com>\r\n')
         self.tnx.body.write('Date: Fri, 25 Mar 2011 13:35:33 -0000\r\n')
         self.tnx.body.write('\r\n')
         self.tnx.body.write('This is testing writing an email\r\n')
         self.tnx.flush()
-        self.assertNotEqual(self.tnx._body_fn, None)
+        self.assertNotEqual(self.tnx.body_filename, None)
 
-        filename = self.tnx._body_fn
+        filename = self.tnx.body_filename
         self.tnx.flush()
-        self.assertEqual(self.tnx._body_fn, filename)
+        self.assertEqual(self.tnx.body_filename, filename)
 
     def test_body_write(self):
         msg = """Subject: blah blah
@@ -97,25 +97,24 @@ To: Joe Bloggs <joe@example.com>
 Date: Fri, 25 Mar 2011 13:35:33 -0000
 
 This is testing writing an email"""
-        self.tnx.body_write(msg)
-        self.assertEqual(self.tnx._body_fn, None)
+        self.tnx.body.write(msg)
+        self.assertEqual(self.tnx.body.name, None)
         self.assertEqual(self.tnx.body.getvalue(), msg)
 
     def test_body_write_flush(self):
-        self.assertEqual(self.tnx._body_fn, None)
-        self.tnx.body_write(' ' * (1024 * 512))
-        self.assertNotEqual(self.tnx._body_fn, None)
+        self.assertEqual(self.tnx.body.name, None)
+        self.tnx.body.write(' ' * (1024 * 512))
+        self.assertNotEqual(self.tnx.body.name, None)
 
-    def test_set_body_start(self):
-        self.tnx.body_write('Subject: blah blah\r\n')
-        self.tnx.body_write('From: John Smith <john@example.com>\r\n')
-        self.tnx.body_write('To: Joe Bloggs <joe@example.com>\r\n')
+    def test_end_headers(self):
+        self.tnx.body.write('Subject: blah blah\r\n')
+        self.tnx.body.write('From: John Smith <john@example.com>\r\n')
+        self.tnx.body.write('To: Joe Bloggs <joe@example.com>\r\n')
         self.tnx.body.write('Date: Fri, 25 Mar 2011 13:35:33 -0000\r\n')
         self.tnx.body.write('\r\n')
-        self.tnx.set_body_start()
-        self.assertTrue(self.tnx._header_size > 0)
-        self.assertEqual(self.tnx._header_size, self.tnx._body_start)
-        self.assertEqual(self.tnx._header_size, 132)
+        self.tnx.end_headers()
+        self.assertTrue(self.tnx.body.body_start > 0)
+        self.assertEqual(self.tnx.body.body_start, 132)
 
     def test_body_property(self):
         self.assertNotEqual(self.tnx.body, None)

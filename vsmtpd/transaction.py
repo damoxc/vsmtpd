@@ -20,12 +20,16 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import logging
+
 from cStringIO import StringIO
 from email.feedparser import FeedParser
 from email.message import Message as _Message, SEMISPACE
 from tempfile import NamedTemporaryFile
 from vsmtpd.address import Address
 from vsmtpd.util import NoteObject
+
+log = logging.getLogger(__name__)
 
 class Message(_Message):
 
@@ -62,9 +66,9 @@ class Spool(object):
     def __init__(self):
         self._body_start = 0
         self._filename = None
-        self._fp       = None
+        self._fp       = StringIO()
         self._headers  = None
-        self._parser   = None
+        self._parser   = FeedParser(Message)
         self._rollover = 262144 # 256kb
 
     def __getattr__(self, key):
@@ -79,6 +83,7 @@ class Spool(object):
         """
         self._body_start = self._fp.tell()
         self._headers = self._parser.close()
+        log.debug('headers marked as closed at %d chars', self._body_start)
         return self._headers
 
     def flush(self):
@@ -88,6 +93,8 @@ class Spool(object):
         # Check to see if the data has been flushed already
         if self._filename:
             return
+
+        log.debug('flushing spool to disk')
 
         # Create the named temporary file to write the data to
         fp = self._fp
@@ -99,6 +106,8 @@ class Spool(object):
 
         self._filename = newfp.name
 
+        log.debug('flushed to disk with name %s', self._filename)
+
     def write(self, data):
         """
         Write data to the end of the email.
@@ -106,11 +115,11 @@ class Spool(object):
         :param data: The data to add to the end of the email
         :type data: str
         """
-        if not self._fp:
-            self._fp = StringIO()
-            self._parser = FeedParser(Message)
 
-        if (self._fp.tell() + len(data)) > self._rollover:
+        datalen = len(data)
+        log.debug('writing %d bytes of data', datalen)
+
+        if (self._fp.tell() + datalen) > self._rollover:
             self.flush()
 
         self._fp.write(data)
@@ -206,7 +215,6 @@ class Transaction(NoteObject):
         self._sender     = None
         self._body       = None
         self._body_fn    = None
-        self._header_size = 0
 
     def add_recipient(self, recipient):
         """
