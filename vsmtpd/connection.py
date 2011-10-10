@@ -114,6 +114,10 @@ class Connection(NoteObject):
     def relay_client(self):
         return self._relay_client
 
+    @relay_client.setter
+    def relay_client(self, value):
+        self._relay_client = value
+
     @property
     def config(self):
         return self._config
@@ -155,6 +159,7 @@ class Connection(NoteObject):
 
     def accept(self):
         log.info('Accepted connection from %s', self.remote_host)
+        self.run_hooks('connect', self)
         self.send_code(220, self.greeting())
 
         while True:
