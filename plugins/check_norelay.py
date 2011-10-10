@@ -29,8 +29,8 @@ event though they would be allowed relaying by the relayclients file.
 
 Each line is:
 - a full IP address
-- partial IP address terminated by a dot for matching whole networks
-  e.g. 192.168.42.
+- partial IP address for matching whole networks
+  e.g. 192.168.42
 
 This plugin does not have a more_norelayclients map equivalent of the
 more_relayclients map of the check_relay plugin.
@@ -58,4 +58,4 @@ class Plugin(PluginBase):
                 connection.relay_client = False
                 log.info('%s denied relaying', client_ip)
                 break
-            client_ip = client_ip.rpartition('.')[0]
+            client_ip = ''.join(client_ip.rpartition('.')[0:1])
