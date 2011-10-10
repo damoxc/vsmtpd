@@ -20,6 +20,18 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+"""
+This plugin detects loops by counting "Received" and "Delivered-To" header
+lines. It's a kluge but it duplicates what qmail-smtpd does, and it does
+at least prevent messages from looping forever.
+
+Takes one optional parameter, the maximum number of "hops" ("Received"
+lines plus "Delivered-To" lines) allowed. The default is 100, the same
+as in qmail-smtpd.
+
+Based off the original from qpsmtpd, written by Keith C. Ivey
+"""
+
 import logging
 
 from vsmtpd import dsn
