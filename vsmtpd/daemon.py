@@ -232,7 +232,7 @@ def main():
     # Configure logging
     logging.basicConfig(
         level=logging.DEBUG,
-        format = '%(asctime)s %(levelname)s [%(name)s:%(lineno)-3s] [%(conn_id)s] %(message)s',
+        format = '%(asctime)s %(levelname)-6s [%(name)s:%(lineno)-3s] [%(conn_id)s] %(message)s',
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
 
