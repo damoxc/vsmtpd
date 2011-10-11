@@ -171,7 +171,10 @@ class Vsmtpd(object):
         set_cmdline('vsmtpd: master')
 
         # Wait for the children to die
-        os.waitpid(-1, 0)
+        try:
+            os.waitpid(-1, 0)
+        except OSError:
+            pass
 
     def _start(self, listener, backlog=None):
         """
@@ -232,7 +235,7 @@ def main():
     # Configure logging
     logging.basicConfig(
         level=logging.DEBUG,
-        format = '%(asctime)s %(levelname)-6s [%(name)s:%(lineno)-3s] [%(conn_id)s] %(message)s',
+        format = '%(asctime)s %(levelname)-6s [%(name)-20s:%(lineno)-3s] [%(conn_id)-7s] %(message)s',
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
 

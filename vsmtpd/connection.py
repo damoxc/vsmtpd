@@ -308,6 +308,18 @@ class Connection(NoteObject):
             else:
                 params[key.lower()] = value
 
+        # Check to see if the reported message size is too large for us and delay early if so
+        if 'size' in params:
+            try:
+                size = int(params['size'])
+            except TypeError:
+                size = 0
+
+            size_limit = self.config.getint('size_limit')
+            if self.hello == 'ehlo' and size_limit < size:
+                log.info('Message too large to receive, declining')
+                return 552, 'Message too big!'
+
         tnx = self.transaction
         try:
             addr = self.run_hooks('mail_pre', tnx, addr, params) or addr
