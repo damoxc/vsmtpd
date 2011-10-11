@@ -593,9 +593,11 @@ class Connection(NoteObject):
 
         return 221, msg, True
 
-    def unknown(self, command, parts):
+    def unknown(self, command, *parts):
         try:
-            self.run_hooks('unknown', self._transaction, command, *parts)
+            result = self.run_hooks('unknown', self._transaction, command, *parts)
+            if not result:
+                return 500, 'Unrecognized command'
         except error.DenyDisconnectError as e:
             return 521, e.message, True
         except error.DenyError as e:

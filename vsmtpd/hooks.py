@@ -53,7 +53,7 @@ HOOKS = [
     'quit',                 # after the client sent a QUIT command
     'disconnect',           # after a plugin returned DENY(|SOFT)_DISCONNECT
                             # or after the client sent the QUIT command
-    'unrecognized_command', # if the client sends an unkonwn command
+    'unknown',              # if the client sends an unkonwn command
     'vrfy',                 # if the client sends the VRFY command
     'deny',                 # after a plugin returned DENY, DENYSOFT
     'ok',                   # after a plugin did not return DENY, etc.
