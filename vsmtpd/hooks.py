@@ -152,7 +152,7 @@ class HookManager(object):
         :param hook_name: The name of the hook to call
         :type hook_name: str
         """
-        log.info('dispatching hook %r', hook_name)
+        log.debug('dispatching hook %r', hook_name)
         for cb in self.__hooks[hook_name]:
             try:
                 result = cb(*args, **kwargs)
