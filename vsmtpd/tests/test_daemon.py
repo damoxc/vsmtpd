@@ -45,7 +45,7 @@ class DaemonTestCase(TestCase):
     def test_daemon_load_plugins(self):
         options = Options(None, None, 2500)
         vsmtpd = Vsmtpd(options, [])
-        vsmtpd.plugin_manager.path.append(os.path.join(os.path.dirname(__file__), 'plugins'))
+        vsmtpd.plugin_manager.path.append(os.path.join(os.path.dirname(__file__), 'pluginsdir'))
         vsmtpd._config.add_section('plugin:simple_valid_plugin')
         vsmtpd._config.add_section('plugin:queue.simple_valid_plugin')
         vsmtpd.load_plugins()

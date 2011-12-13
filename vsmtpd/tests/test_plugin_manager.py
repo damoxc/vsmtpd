@@ -29,7 +29,7 @@ from vsmtpd.tests.common import TestCase
 class PluginManagerTestCase(TestCase):
 
     def setUp(self):
-        plugins = os.path.join(os.path.dirname(__file__), 'plugins')
+        plugins = os.path.join(os.path.dirname(__file__), 'pluginsdir')
         self.manager = PluginManager([plugins])
 
     def test_simple_valid_plugin(self):
