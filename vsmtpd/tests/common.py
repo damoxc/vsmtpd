@@ -20,7 +20,75 @@
 #   Boston, MA    02110-1301, USA.
 #
 
+import os
+import collections
+
 from unittest import TestCase as BaseTestCase
+from vsmtpd.connection import Connection
+from vsmtpd.daemon import Vsmtpd
+from vsmtpd.transaction import Transaction
+from vsmtpd.plugins.manager import PluginManager
+
+class FakeSocket(object):
+
+    def close(self):
+        pass
+
+    def getsockname(self):
+        return ('127.0.0.1', 25)
+
+    def makefile(self):
+        pass
+
+    def shutdown(self, how):
+        pass
+
+Options = collections.namedtuple('Options', 'config listen port')
+
+def create_connection(**params):
+    server = params['server'] if 'server' in params else create_daemon()
+    sock = params['sock'] if 'sock' in params else FakeSocket()
+    addr = params['addr'] if 'addr' in params else ('127.0.0.1', 34567)
+
+    connection = Connection(server, sock, addr)
+    for k, v in params.iteritems():
+        if k == 'transaction':
+            v['connection'] = connection
+            connection._transaction = create_transaction(**v)
+
+    return connection
+
+def create_daemon(*args, **options):
+    opts = {'config': None, 'listen': None, 'port': None}
+    opts.update(options)
+    return Vsmtpd(Options(**opts), args)
+
+def create_transaction(**params):
+    tranasction = Transaction(params.get('connection'))
+
+    if 'recipients' in params:
+        for rcpt in params['recipients']:
+            transaction.add_recipient(rcpt)
+
+    if 'sender' in params:
+        transaction.sender = params['sender']
+
+    if 'body' in params:
+        tranasction.body.write(params['body'])
+
+    return tranasction
 
 class TestCase(BaseTestCase):
     pass
+
+class PluginTestCase(TestCase):
+
+    plugin_name = None
+
+    def __init__(self, methodName='runTest'):
+        super(PluginTestCase, self).__init__(methodName=methodName)
+        dirname = os.path.dirname
+        plugins = os.path.join(dirname(dirname(dirname(__file__))),
+                               'plugins')
+        manager = PluginManager([plugins])
+        self.plugin = manager.load(self.plugin_name)

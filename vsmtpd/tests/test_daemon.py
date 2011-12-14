@@ -22,29 +22,19 @@
 
 import os
 import logging
-import collections
-import vsmtpd.daemon
 
-from vsmtpd.daemon import Vsmtpd
-from vsmtpd.tests.common import TestCase
-
-Options = collections.namedtuple('Options', 'config listen port')
+from vsmtpd.tests.common import TestCase, create_daemon
 
 class DaemonTestCase(TestCase):
 
-    def setUp(self):
-        vsmtpd.daemon.log = logging.getLogger('vsmtpd.daemon')
-
     def test_daemon_creation(self):
-        options = Options(None, None, 2500)
-        vsmtpd = Vsmtpd(options, [])
-        self.assertEqual(vsmtpd.options.port, options.port)
+        vsmtpd = create_daemon(port=2500)
+        self.assertEqual(vsmtpd.options.port, 2500)
         self.assertNotEqual(vsmtpd.hook_manager, None)
         self.assertNotEqual(vsmtpd.plugin_manager, None)
 
     def test_daemon_load_plugins(self):
-        options = Options(None, None, 2500)
-        vsmtpd = Vsmtpd(options, [])
+        vsmtpd = create_daemon(port=2500)
         vsmtpd.plugin_manager.path.append(os.path.join(os.path.dirname(__file__), 'pluginsdir'))
         vsmtpd._config.add_section('plugin:simple_valid_plugin')
         vsmtpd._config.add_section('plugin:queue.simple_valid_plugin')
