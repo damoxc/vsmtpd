@@ -39,7 +39,7 @@ from vsmtpd.hooks import HookManager
 from vsmtpd.plugins.manager import PluginManager
 from vsmtpd.util import set_cmdline
 
-log = None
+log = logging.getLogger(__name__)
 vsmtpd = None
 
 class Vsmtpd(object):
@@ -221,7 +221,7 @@ class Vsmtpd(object):
         sys.exit()
 
 def main():
-    global log, vsmtpd
+    global vsmtpd
 
     parser = OptionParser()
     parser.add_option('-c', '--config', dest='config', action='store',
@@ -239,7 +239,6 @@ def main():
         datefmt = '%a %d %b %Y %H:%M:%S'
     )
 
-    log = logging.getLogger(__name__)
     log.connection_id = 'master'
 
     vsmtpd = Vsmtpd(options, args)
