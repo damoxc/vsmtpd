@@ -31,14 +31,26 @@ log = logging.getLogger(__name__)
 
 class Plugin(PluginBase):
 
+    def __init__(self, config=None):
+        self.limit = 5
+        self.delay = 0.1
+
+        if not config:
+            return
+
+        if 'limit' in config:
+            self.limit = config.getint('limit')
+        if 'delay' in config:
+            self.delay = config.getfloat('delay')
+
     @hook
     def pre_connect(self, connection):
         loadavg = float(open('/proc/loadavg').read().split()[0])
-        limit = 5
+        limit = self.limit
 
         # Block this connection until the load average is less than the
         # designated limit.
         while loadavg > limit:
             log.info('load average is greater than %.f2 (%.f2)', limit,
                      loadavg)
-            gevent.sleep(0.1)
+            gevent.sleep(self.delay)
