@@ -176,3 +176,12 @@ def set_cmdline(cmdline):
 
     # Set the processname in the process table
     libc.prctl(15, new_cmdline, 0, 0, 0)
+
+def reverse_ip(ip):
+    return '.'.join(reversed(ip.split('.')))
+
+try:
+    import vsmtpd._util
+    reverse_ip = vsmtpd._util.reverse_ip
+except ImportError:
+    pass
