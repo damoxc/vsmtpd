@@ -180,8 +180,9 @@ def set_cmdline(cmdline):
 def reverse_ip(ip):
     return '.'.join(reversed(ip.split('.')))
 
+# Attempt to load and overwrite the python versions of some of these
+# functions with their C counterparts.
 try:
-    import vsmtpd._util
-    reverse_ip = vsmtpd._util.reverse_ip
+    from vsmtpd._util import *
 except ImportError:
     pass
