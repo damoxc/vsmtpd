@@ -22,9 +22,12 @@
 
 import imp
 import sys
+import logging
 
 from vsmtpd.error import PluginNotFoundError
 from vsmtpd.plugins.plugin import PluginBase
+
+log = logging.getLogger(__name__)
 
 class PluginManager(object):
     """
@@ -42,7 +45,7 @@ class PluginManager(object):
     def __init__(self, path=None):
         self.path = path
         self.plugins = {}
-    
+
     def load(self, plugin_name):
         """
         Load a plugin of the specified name and return the plugin
@@ -53,21 +56,21 @@ class PluginManager(object):
         """
 
         # imp.find_module expects actual paths instead of module names
-        name = plugin_name.replace('.', '/')
+        name = plugin_name.replace('/', '.')
 
         # Sadly there doesn't seem like a simple way to check if a module
         # cannot be found due to it not existing or having a syntax/import
         # error.
         try:
-            fp, path, description = imp.find_module(name, self.path)
+            fp, path, description = imp.find_module(plugin_name, self.path)
         except ImportError:
             raise PluginNotFoundError("Can't find a valid module")
 
         # Since we aren't using Python packages but instead pathnames we
         # need to create placeholder modules for the plugin parents.
-        if '.' in plugin_name:
+        if '.' in name:
             check_name = 'vsmtpd.plugins'
-            for part in plugin_name.split('.'):
+            for part in name.split('.'):
                 check_name += '.' + part
                 if check_name in sys.modules:
                     continue
@@ -75,7 +78,7 @@ class PluginManager(object):
                 sys.modules[check_name] = holder_module
 
         try:
-            module = imp.load_module('vsmtpd.plugins.%s' % plugin_name, fp,
+            module = imp.load_module('vsmtpd.plugins.%s' % name, fp,
                                      path, description)
         finally:
             fp.close()
