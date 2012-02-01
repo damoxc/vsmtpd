@@ -69,5 +69,5 @@ class Plugin(PluginBase):
         jobs = transaction.connection.notes.get('dnsbl_jobs')
         gevent.joinall(jobs)
         ip = transaction.connection.remote_ip
-        #if any([j.value for j in jobs]):
-        self.deny(None, self.disconnect)
+        if any([j.value for j in jobs]):
+            self.deny(None, self.disconnect)
