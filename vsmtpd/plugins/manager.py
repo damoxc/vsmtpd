@@ -56,7 +56,8 @@ class PluginManager(object):
         """
 
         # imp.find_module expects actual paths instead of module names
-        name = plugin_name.replace('/', '.')
+        plugin_name = plugin_name.replace('.', '/')
+        name =  plugin_name.replace('/', '.')
 
         # Sadly there doesn't seem like a simple way to check if a module
         # cannot be found due to it not existing or having a syntax/import
