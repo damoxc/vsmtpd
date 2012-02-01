@@ -125,5 +125,21 @@ This is testing writing an email"""
     def test_connection_property(self):
         self.assertEqual(self.tnx.connection, self.tnx._connection)
 
+    def test_body_insert_header(self):
+        self.tnx.body.write('Subject: blah blah\r\n')
+        self.tnx.body.write('From: John Smith <john@example.com>\r\n')
+        self.tnx.body.write('To: Joe Bloggs <joe@example.com>\r\n')
+        self.tnx.body.write('Date: Fri, 25 Mar 2011 13:35:33 -0000\r\n')
+        self.tnx.body.write('\r\n')
+        self.tnx.end_headers()
+
+        self.tnx.headers.insert_header(0, 'Received', 'By me')
+        self.assertTrue(self.tnx.headers.has_key('Received'))
+        self.assertEqual(self.tnx.headers.keys()[0], 'Received')
+
+        self.tnx.headers.insert_header(5, 'X-Test', 'vsmtpd')
+        self.assertTrue(self.tnx.headers.has_key('X-Test'))
+        self.assertEqual(self.tnx.headers.keys()[5], 'X-Test')
+
     def tearDown(self):
         self.tnx.close()
