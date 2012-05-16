@@ -31,8 +31,9 @@ import os
 import gevent
 import logging
 
-from gevent.dns import DNSError
-from gevent.socket import gethostbyname
+from gevent.ares import ARES_ENOTFOUND
+from gevent.resolver_ares import Resolver, ares
+from gevent.socket import gethostbyname, gaierror
 
 from vsmtpd.hooks import hook
 from vsmtpd.plugins.plugin import PluginBase
@@ -41,10 +42,17 @@ from vsmtpd.util import reverse_ip
 log = logging.getLogger(__name__)
 
 def check_dnsbl(rip, bl):
-    try:
-        return gethostbyname('%s.%s' % (rip, bl))
-    except DNSError:
-        return None
+    for i in xrange(0, 3):
+        try:
+            dnsbl_name = '%s.%s' % (rip, bl)
+            result = gethostbyname(dnsbl_name)
+            if result == '127.0.0.2':
+                resolver = Resolver()
+                resolver.query(dnsbl_name, 'txt')
+            return result
+        except gaierror as e:
+            if e.errno == ARES_ENOTFOUND:
+                return None
 
 class Plugin(PluginBase):
 
